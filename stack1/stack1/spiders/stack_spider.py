@@ -9,6 +9,7 @@ from scrapy.item import Item, Field
 
 class InitiativeItem(Item):
     title = Field()
+    autor = Field()
     url = Field()
 
 
@@ -44,14 +45,14 @@ class StackSpider(Spider):
         num_inis = Selector(response).xpath('//div[@class="SUBTITULO_CONTENIDO"]/span/text()').extract()
 
         split = first_url.partition("&DOCS=1-1")
+        #TEST FOR A initiative
+        #yield scrapy.Request("http://www.congreso.es/portal/page/portal/Congreso/Congreso/Iniciativas/Indice%20de%20Iniciativas?_piref73_1335503_73_1335500_1335500.next_page=/wc/servidorCGI&CMD=VERLST&BASE=IW11&PIECE=IWA1&FMT=INITXD1S.fmt&FORM1=INITXLUS.fmt&DOCS=5-5&QUERY=%28I%29.ACIN1.+%26+%28125%29.SINI.",callback=self.oneinitiative)
 
 
-        yield scrapy.Request("http://www.congreso.es/portal/page/portal/Congreso/Congreso/Iniciativas/Indice%20de%20Iniciativas?_piref73_1335503_73_1335500_1335500.next_page=/wc/servidorCGI&CMD=VERLST&BASE=IW11&PIECE=IWC1&FMT=INITXD1S.fmt&FORM1=INITXLUS.fmt&DOCS=10-10&QUERY=%28I%29.ACIN1.+%26+%28213%29.SINI.",callback=self.oneinitiative)
-
-        #for i in range(1,int(num_inis[0])+1):
-        #    new_url = split[0]+"&DOCS="+str(i)+"-"+str(i)+split[2]
-        #    initiative_url = urlparse.urljoin(response.url, new_url)
-        #    yield scrapy.Request(initiative_url,callback=self.oneinitiative)
+        for i in range(1,int(num_inis[0])+1):
+            new_url = split[0]+"&DOCS="+str(i)+"-"+str(i)+split[2]
+            initiative_url = urlparse.urljoin(response.url, new_url)
+            yield scrapy.Request(initiative_url,callback=self.oneinitiative)
 
 
     def oneinitiative(self,response):
@@ -59,14 +60,25 @@ class StackSpider(Spider):
         filter = Selector(response).xpath('//div[@class="ficha_iniciativa"]/p[@class="apartado_iniciativa"]/text()')
 
         #test = Selector(response).xpath('//div[@class="ficha_iniciativa"]/p[@class="apartado_iniciativa" and text()="Autor:\n"]/following-sibling::p[@class="texto" and preceding-sibling::p[] ]')
-        test = Selector(response).xpath('//div[@class="ficha_iniciativa"]/p[@class="apartado_iniciativa" and text()="Autor:\n" ]/following-sibling::p[@class="texto" and  following-sibling::p[not(@class="apartado_iniciativa")]]').extract()
+        autors = Selector(response).xpath('//div[@class="ficha_iniciativa"]/p[@class="apartado_iniciativa"\
+         and text()="Autor:\n" ]/following-sibling::\
+        p[@class="apartado_iniciativa"][1]/preceding-sibling::p[preceding-sibling::p[. = "Autor:\n"]]')
 
+        listautors=[]
 
+        for autor in autors:
+            add = autor.xpath("a/b/text()").extract()
+            #pdb.set_trace()
+            if not add:
+                add = autor.xpath("./text()").extract()
+            listautors.append(add)
 
-        pdb.set_trace()
+        autor = '-'.join( str(elem[0]) for elem in listautors)
+
         item = InitiativeItem()
         item['title']= title
         item['url'] = response.url
+        item['autor'] =autor
 
 
 
