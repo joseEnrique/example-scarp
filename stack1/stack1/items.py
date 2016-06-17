@@ -7,6 +7,8 @@
 from scrapy.item import Item, Field
 
 
-class StackItem(Item):
+class InitiativeItem(Item):
     title = Field()
     url = Field()
+    autor = Field()
+
