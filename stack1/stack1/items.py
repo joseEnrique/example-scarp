@@ -12,3 +12,8 @@ class InitiativeItem(Item):
     url = Field()
     autor = Field()
 
+class MemberItem(Item):
+    name = Field()
+
+
+

@@ -20,7 +20,7 @@ from stack1.items import InitiativeItem
 
 
 class StackSpider(Spider):
-    name = "stack1"
+    name = "initiatives"
     allowed_domains = ["http://www.congreso.es/","www.congreso.es"]
     start_urls = [
         "http://www.congreso.es/portal/page/portal/Congreso/Congreso/Iniciativas/Indice%20de%20Iniciativas",
