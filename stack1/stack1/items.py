@@ -12,8 +12,16 @@ class InitiativeItem(Item):
     url = Field()
     autor = Field()
 
+
+
 class MemberItem(Item):
     name = Field()
-
-
-
+    second_name = Field()
+    avatar = Field()
+    group = Field()
+    email = Field()
+    web = Field()
+    twitter= Field()
+    division= Field()
+    inscription_date = Field()
+    termination_date = Field()

@@ -13,8 +13,27 @@ BOT_NAME = 'stack1'
 
 SPIDER_MODULES = ['stack1.spiders']
 NEWSPIDER_MODULE = 'stack1.spiders'
+ITEM_PIPELINES = {'stack1.pipelines.MongoDBPipeline':900}
+
+MONGODB_SERVER = '192.168.3.34'
+MONGODB_PORT = 27017
+MONGODB_DB = 'test'
+MONGODB_COLLECTION = 'test'
+
+from scrapy.exporters import JsonLinesItemExporter
 
 
+##encode en json
+
+"""class MyJsonLinesItemExporter(JsonLinesItemExporter):
+    def __init__(self, file, **kwargs):
+        super(MyJsonLinesItemExporter, self).__init__(file, ensure_ascii=False, **kwargs)
+
+FEED_EXPORTERS = {
+    'jsonlines': 'stack1.settings.MyJsonLinesItemExporter',
+    'jl': 'stack1.settings.MyJsonLinesItemExporter',
+}
+"""
 # Crawl responsibly by identifying yourself (and your website) on the user-agent
 #USER_AGENT = 'stack1 (+http://www.yourdomain.com)'
 

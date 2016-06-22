@@ -1,11 +1,13 @@
 import urlparse
 
+
 from scrapy.contrib.spiders import CrawlSpider, Rule
 from scrapy.contrib.linkextractors import LinkExtractor
 from scrapy.selector import HtmlXPathSelector
 from scrapy.item import Item, Field
 import pdb
-from dateutil import *
+
+from dateutil.parser import parse
 
 
 
@@ -21,6 +23,8 @@ class MemberItem(Item):
     division= Field()
     inscription_date = Field()
     termination_date = Field()
+    party_name = Field()
+    party_logo = Field()
 
 
 
@@ -66,44 +70,43 @@ class MemberSpider(CrawlSpider):
         avatar = x.select('//div[@id="datos_diputado"]/p[@class="logo_g'
                           'rupo"]/img[@name="foto"]/@src').extract()
 
-
-
         item = MemberItem()
-
-
 
         if names:
             second_name, name = names[0].split(',')
-            item['name'] = name.strip().encode('utf-8')
-            item['second_name'] = second_name.strip().encode('utf-8')
+            item['name'] = name.strip()
+            item['second_name'] = second_name.strip()
             if avatar:
                 item['avatar'] = 'http://www.congreso.es' + avatar[0]
             if curriculum:
                 state = curriculum.re('(?<=Diputad[ao] por)[\s]*[\w\s]*')
                 if state:
                     item['division'] = state[0].strip()
-                group = curriculum.select('a')
+                group = curriculum.select('a/text()')
+                prueba = x.select('//div[@id="datos_diputado"]/p[@cl'
+                                            'ass="logo_grupo"]/a/img/@src').\
+                                            extract()[0]
+                #pdb.set_trace()
                 if group:
                     # url is in list, extract it
-                    item['group'] = group.extract()
-
-                    party_avatar = x.select('//div[@id="datos_diputado"]/p[@cl'
+                    item['group'] = group.extract()[0]
+                    item['party_logo'] = 'http://www.congreso.es' + x.select('//div[@id="datos_diputado"]/p[@cl'
                                             'ass="logo_grupo"]/a/img/@src').\
-                                            extract()
-                    party_name = x.select('//div[@id="datos_diputado"]/p[@clas'
-                                          's="nombre_grupo"]/text()').extract()
+                                            extract()[0]
+                    item['party_name'] = x.select('//div[@id="datos_diputado"]/p[@clas'
+                                          's="nombre_grupo"]/text()').extract()[0]
 
 
                     # add dates of inscription and termination
                     ins_date = curriculum.re('(?i)(?<=fecha alta:)[\s]*[\d\/]*')
                     if ins_date:
-                        item['inscription_date'] = dateutil.parser.parse\
+                        item['inscription_date'] = parse\
                                                    (ins_date[0], dayfirst=True)
                     term_date = curriculum.re('(?i)(?<=caus\xf3 baja el)[\s]*['
-                                              '\d\/]*')
+                                             '\d\/]*')
                     if term_date:
-                        item['termination_date'] = dateutil.parser.parse\
-                                                   (term_date[0], dayfirst=True)
+                        item['termination_date'] = parse\
+                                                 (term_date[0], dayfirst=True)
 
             if extra_data:
                 web_data = x.select('//div[@class="webperso_dip"]/div[@class="'
