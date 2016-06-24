@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+import re
 import urlparse
 import scrapy
 from scrapy import Spider
@@ -7,15 +8,14 @@ import pdb
 
 from scrapy.item import Item, Field
 
-from stack1.items import InitiativeItem
 
 
 
 
-#class InitiativeItem(Item):
-#    title = Field()
-#    autor = Field()
-#    url = Field()
+class InitiativeItem(Item):
+    title = Field()
+    autor = Field()
+    url = Field()
 
 
 
@@ -53,12 +53,13 @@ class StackSpider(Spider):
 
         #some
         #yield scrapy.Request("http://www.congreso.es/portal/page/portal/Congreso/Congreso/Iniciativas?_piref73_2148295_73_1335437_1335437.next_page=/wc/servidorCGI&CMD=VERLST&BASE=IW11&PIECE=IWC1&FMT=INITXD1S.fmt&FORM1=INITXLUS.fmt&DOCS=3-3&QUERY=%28I%29.ACIN1.+%26+%28189%29.SINI.",callback=self.oneinitiative)
+        yield scrapy.Request("http://www.congreso.es/portal/page/portal/Congreso/Congreso/Iniciativas/Indice%20de%20Iniciativas?_piref73_1335503_73_1335500_1335500.next_page=/wc/servidorCGI&CMD=VERLST&BASE=IW11&PIECE=IWA1&FMT=INITXD1S.fmt&FORM1=INITXLUS.fmt&DOCS=5-5&QUERY=%28I%29.ACIN1.+%26+%28125%29.SINI.",callback=self.oneinitiative)
 
 
-        for i in range(1,int(num_inis[0])+1):
-            new_url = split[0]+"&DOCS="+str(i)+"-"+str(i)+split[2]
-            initiative_url = urlparse.urljoin(response.url, new_url)
-            yield scrapy.Request(initiative_url,callback=self.oneinitiative)
+        #for i in range(1,int(num_inis[0])+1):
+        #    new_url = split[0]+"&DOCS="+str(i)+"-"+str(i)+split[2]
+        #    initiative_url = urlparse.urljoin(response.url, new_url)
+        #    yield scrapy.Request(initiative_url,callback=self.oneinitiative)
 
     def oneinitiative(self,response):
         title = Selector(response).xpath('//p[@class="titulo_iniciativa"]/text()').extract()[0]
@@ -83,25 +84,38 @@ class StackSpider(Spider):
             listautors.append(add)
 
         for boletin in boletines:
-            add = boletin.extract()
+            url = boletin.xpath("a/@href").extract()[0]
+            #pdb.set_trace()
+            if url:
+                #pdb.set_trace()
+                try:
+                    found = re.search('gina(.+?)\)', url).group(1)
+                except:
+                    found = "Nothing"
+                listboletines.append(found)
 
-            listboletines.append(add)
+                newsletter_url = urlparse.urljoin(response.url, url)
+                yield scrapy.Request(newsletter_url,callback=self.extractnewsletters,meta={'pag':found})
 
 
 
-        if len(listautors)>1:
-            autor = ' - '.join( elem[0] for elem in listautors)
-        else:
-            autor = listautors[0][0]
-
-
+        #if len(listautors)>1:
+        #    autor = ' - '.join( elem[0] for elem in listautors)
+        #else:
+        #    autor = listautors[0][0]
 
         item = InitiativeItem()
         item['title']= title
         item['url'] = response.url
-        item['autor'] =autor
+        item['autor'] =listautors
 
 
-        return item
+        #return item
+
+    def extractnewsletters(self,response):
+        prue = response.meta['pag']
+
+        first_url = Selector(response).xpath('//div[@class="texto_completo"]').extract()
+        pdb.set_trace()
 
     #http://www.congreso.es/portal/page/portal/Congreso/Congreso/Iniciativas?_piref73_2148295_73_1335437_1335437.next_page=/wc/servidorCGI&CMD=VERLST&BASE=iwi6&FMT=INITXLTS.fmt&DOCS=1-50&DOCORDER=FIFO&OPDEF=Y&QUERY=%28I%29.ACIN1.
