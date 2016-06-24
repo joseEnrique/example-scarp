@@ -113,9 +113,40 @@ class StackSpider(Spider):
         #return item
 
     def extractnewsletters(self,response):
-        prue = response.meta['pag']
+        number = response.meta['pag']
+        number = "4"
+
 
         first_url = Selector(response).xpath('//div[@class="texto_completo"]').extract()
+        pages = Selector(response).xpath('//div[@class="texto_completo"]/p/a/@name').extract()
+        ispage = [ch for ch in pages if re.search('gina' + "2" + '\)', ch)]
+
+
+        splittext = first_url[0].split("<br><br>")
+        result = []
+        control = False
+
+        #selecciona del texto solo la pagina que nos resulta útil
+        if ispage:
+            for i in splittext:
+                #pdb.set_trace()
+                if re.search("gina"+number+'\)', i) :
+                    control = True
+                    continue
+                elif number == u"1":
+                    control= True
+                if control and re.search('gina' + str(int(number)+1) + '\)', i):
+                    break
+                if control:
+                    result.append(i)
+
+
+
+        result = self.concatlist(result)
+
+        #test = Selector(response).xpath('//div[@class="texto_completo"]/a/@name').extract()
         pdb.set_trace()
 
     #http://www.congreso.es/portal/page/portal/Congreso/Congreso/Iniciativas?_piref73_2148295_73_1335437_1335437.next_page=/wc/servidorCGI&CMD=VERLST&BASE=iwi6&FMT=INITXLTS.fmt&DOCS=1-50&DOCORDER=FIFO&OPDEF=Y&QUERY=%28I%29.ACIN1.
+    def concatlist(self, list):
+        return '  '.join( elem for elem in list)

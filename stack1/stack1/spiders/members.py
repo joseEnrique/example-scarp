@@ -83,9 +83,7 @@ class MemberSpider(CrawlSpider):
                 if state:
                     item['division'] = state[0].strip()
                 group = curriculum.select('a/text()')
-                prueba = x.select('//div[@id="datos_diputado"]/p[@cl'
-                                            'ass="logo_grupo"]/a/img/@src').\
-                                            extract()[0]
+
                 #pdb.set_trace()
                 if group:
                     # url is in list, extract it
