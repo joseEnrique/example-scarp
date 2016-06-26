@@ -5,26 +5,30 @@ import scrapy
 from scrapy import Spider
 from scrapy.selector import Selector
 import pdb
+from scrapy.contrib.linkextractors import LinkExtractor
 
 from scrapy.item import Item, Field
-
-
-
+from scrapy.spiders import Rule
 
 
 class InitiativeItem(Item):
     title = Field()
     autor = Field()
     url = Field()
+    publications = Field()
 
 
 
 class StackSpider(Spider):
+    count = 0
+    countaux= 0
+    item = InitiativeItem()
     name = "initiatives"
     allowed_domains = ["http://www.congreso.es/","www.congreso.es"]
     start_urls = [
         "http://www.congreso.es/portal/page/portal/Congreso/Congreso/Iniciativas/Indice%20de%20Iniciativas",
     ]
+
 
 
     def parse(self, response):
@@ -73,6 +77,8 @@ class StackSpider(Spider):
         boletines = Selector(response).xpath('//div[@class="ficha_iniciativa"]/p[@class="apartado_iniciativa"\
             and text()="Boletines:" ]/following-sibling::\
            p[@class="texto"]')
+        if boletines:
+            self.count = len(boletines)
 
         listautors=[]
         listboletines = []
@@ -82,6 +88,12 @@ class StackSpider(Spider):
             if not add:
                 add = autor.xpath("./text()").extract()
             listautors.append(add)
+
+        self.item['title'] = title
+        self.item['url'] = response.url
+        self.item['autor'] = listautors
+        self.item["publications"] = []
+
 
         for boletin in boletines:
             url = boletin.xpath("a/@href").extract()[0]
@@ -95,7 +107,8 @@ class StackSpider(Spider):
                 listboletines.append(found)
 
                 newsletter_url = urlparse.urljoin(response.url, url)
-                yield scrapy.Request(newsletter_url,callback=self.extractnewsletters,meta={'pag':found})
+                yield scrapy.Request(newsletter_url,callback=self.extractnewsletters,meta={'pag':found })
+
 
 
 
@@ -104,49 +117,83 @@ class StackSpider(Spider):
         #else:
         #    autor = listautors[0][0]
 
-        item = InitiativeItem()
-        item['title']= title
-        item['url'] = response.url
-        item['autor'] =listautors
 
 
         #return item
 
     def extractnewsletters(self,response):
         number = response.meta['pag']
-        number = "4"
+
+        try:
+            urls = Selector(response).xpath('//p[@class="texto_completo"]/a/@href').extract()
+        except:
+            urls = False
+        if not urls:
+
+            prueba = yield scrapy.Request(response.url, callback=self.searchpages, meta={'pag': number})
 
 
-        first_url = Selector(response).xpath('//div[@class="texto_completo"]').extract()
+
+        else:
+            urls.append(response.url)
+            for i in urls:
+                newsletter_url = urlparse.urljoin(response.url, i)
+                prueba = yield scrapy.Request(newsletter_url, callback=self.searchpages, meta={'pag': number})
+        pdb.set_trace()
+
+
+
+
+
+
+
+    def searchpages(self,response):
+        number = response.meta['pag']
+
         pages = Selector(response).xpath('//div[@class="texto_completo"]/p/a/@name').extract()
-        ispage = [ch for ch in pages if re.search('gina' + "2" + '\)', ch)]
+        haspage = [ch for ch in pages if re.search('gina' + number + '\)', ch)]
+        ae = self.count
+        if haspage:
+            self.countaux+=1
+            publications = self.extracttext(response, number)
+            self.item["publications"].append(publications)
+            if self.countaux == self.count:
+                return self.item
+        return "Entra"
 
 
-        splittext = first_url[0].split("<br><br>")
+
+
+
+
+    def extracttext(self, response,number):
+        text = Selector(response).xpath('//div[@class="texto_completo"]').extract()
+        pages = Selector(response).xpath('//div[@class="texto_completo"]/p/a/@name').extract()
+        #if is first
+        firstofpage = re.search('gina(.+?)\)', pages[0]).group(1)
+
+        #pdb.set_trace()
+
+        # text split
+        splittext = text[0].split("<br><br>")
         result = []
         control = False
 
-        #selecciona del texto solo la pagina que nos resulta útil
-        if ispage:
-            for i in splittext:
-                #pdb.set_trace()
-                if re.search("gina"+number+'\)', i) :
-                    control = True
-                    continue
-                elif number == u"1":
-                    control= True
-                if control and re.search('gina' + str(int(number)+1) + '\)', i):
-                    break
-                if control:
-                    result.append(i)
+        # selecciona del texto solo la pagina que nos resulta útil
+        for i in splittext:
+            # pdb.set_trace()
+            if re.search("gina" + number + '\)', i):
+                control = True
+                continue
+            elif int(number) < int(firstofpage):
+                control = True
+            if control and re.search('gina' + str(int(number) + 1) + '\)', i):
+                break
+            if control:
+               result.append(i)
 
-
-
-        result = self.concatlist(result)
-
-        #test = Selector(response).xpath('//div[@class="texto_completo"]/a/@name').extract()
-        pdb.set_trace()
+        return self.concatlist(result)
 
     #http://www.congreso.es/portal/page/portal/Congreso/Congreso/Iniciativas?_piref73_2148295_73_1335437_1335437.next_page=/wc/servidorCGI&CMD=VERLST&BASE=iwi6&FMT=INITXLTS.fmt&DOCS=1-50&DOCORDER=FIFO&OPDEF=Y&QUERY=%28I%29.ACIN1.
     def concatlist(self, list):
-        return '  '.join( elem for elem in list)
+        return ' '.join( elem for elem in list)
