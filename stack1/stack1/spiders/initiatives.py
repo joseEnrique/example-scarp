@@ -16,13 +16,15 @@ class InitiativeItem(Item):
     autor = Field()
     url = Field()
     publications = Field()
+    count = Field()
+    countaux = Field()
 
 
 
 class StackSpider(Spider):
     count = 0
     countaux= 0
-    item = InitiativeItem()
+    #item = InitiativeItem()
     name = "initiatives"
     allowed_domains = ["http://www.congreso.es/","www.congreso.es"]
     start_urls = [
@@ -57,6 +59,7 @@ class StackSpider(Spider):
 
         #some
         #yield scrapy.Request("http://www.congreso.es/portal/page/portal/Congreso/Congreso/Iniciativas?_piref73_2148295_73_1335437_1335437.next_page=/wc/servidorCGI&CMD=VERLST&BASE=IW11&PIECE=IWC1&FMT=INITXD1S.fmt&FORM1=INITXLUS.fmt&DOCS=3-3&QUERY=%28I%29.ACIN1.+%26+%28189%29.SINI.",callback=self.oneinitiative)
+
         yield scrapy.Request("http://www.congreso.es/portal/page/portal/Congreso/Congreso/Iniciativas/Indice%20de%20Iniciativas?_piref73_1335503_73_1335500_1335500.next_page=/wc/servidorCGI&CMD=VERLST&BASE=IW11&PIECE=IWA1&FMT=INITXD1S.fmt&FORM1=INITXLUS.fmt&DOCS=5-5&QUERY=%28I%29.ACIN1.+%26+%28125%29.SINI.",callback=self.oneinitiative)
 
 
@@ -77,8 +80,8 @@ class StackSpider(Spider):
         boletines = Selector(response).xpath('//div[@class="ficha_iniciativa"]/p[@class="apartado_iniciativa"\
             and text()="Boletines:" ]/following-sibling::\
            p[@class="texto"]')
-        if boletines:
-            self.count = len(boletines)
+
+
 
         listautors=[]
         listboletines = []
@@ -89,25 +92,46 @@ class StackSpider(Spider):
                 add = autor.xpath("./text()").extract()
             listautors.append(add)
 
-        self.item['title'] = title
-        self.item['url'] = response.url
-        self.item['autor'] = listautors
-        self.item["publications"] = []
+        item = InitiativeItem()
+
+        item['title'] = title
+        item['url'] = response.url
+        item['autor'] = listautors
+        item["publications"] = []
+
+        if boletines:
+            item["count"] = len(boletines)
+            item["countaux"] = 0
+        else:
+            item["count"] = 0
+            item["countaux"] = 0
 
 
-        for boletin in boletines:
-            url = boletin.xpath("a/@href").extract()[0]
-            #pdb.set_trace()
-            if url:
-                #pdb.set_trace()
+
+        if boletines:
+            urls = boletines.xpath("a/@href").extract()
+
+            for url in urls:
+
+
+
+                    #pdb.set_trace()
                 try:
                     found = re.search('gina(.+?)\)', url).group(1)
                 except:
                     found = "Nothing"
                 listboletines.append(found)
-
                 newsletter_url = urlparse.urljoin(response.url, url)
-                yield scrapy.Request(newsletter_url,callback=self.extractnewsletters,meta={'pag':found })
+                request = scrapy.Request(newsletter_url,callback=self.extractnewsletters,meta={'pag':found, 'item':item })
+                yield request
+
+
+        else:
+            yield  item
+
+
+
+
 
 
 
@@ -123,6 +147,9 @@ class StackSpider(Spider):
 
     def extractnewsletters(self,response):
         number = response.meta['pag']
+        item = response.meta['item']
+
+
 
         try:
             urls = Selector(response).xpath('//p[@class="texto_completo"]/a/@href').extract()
@@ -130,7 +157,9 @@ class StackSpider(Spider):
             urls = False
         if not urls:
 
-            prueba = yield scrapy.Request(response.url, callback=self.searchpages, meta={'pag': number})
+            request =   scrapy.Request(response.url, callback=self.searchpages, meta={'pag': number , 'item':item})
+            yield request
+
 
 
 
@@ -138,8 +167,16 @@ class StackSpider(Spider):
             urls.append(response.url)
             for i in urls:
                 newsletter_url = urlparse.urljoin(response.url, i)
-                prueba = yield scrapy.Request(newsletter_url, callback=self.searchpages, meta={'pag': number})
-        pdb.set_trace()
+                request = scrapy.Request(newsletter_url, callback=self.searchpages, meta={'pag': number, 'item':item })
+                yield request
+
+
+
+
+
+
+
+
 
 
 
@@ -148,29 +185,36 @@ class StackSpider(Spider):
 
 
     def searchpages(self,response):
+        self.count+=1
         number = response.meta['pag']
-
+        item = response.meta['item']
         pages = Selector(response).xpath('//div[@class="texto_completo"]/p/a/@name').extract()
         haspage = [ch for ch in pages if re.search('gina' + number + '\)', ch)]
-        ae = self.count
+        pdb.set_trace()
         if haspage:
-            self.countaux+=1
+
             publications = self.extracttext(response, number)
-            self.item["publications"].append(publications)
-            if self.countaux == self.count:
-                return self.item
-        return "Entra"
+            item["publications"].append(publications)
+            yield item
 
 
 
 
 
 
-    def extracttext(self, response,number):
+
+
+
+
+
+
+
+
+    def extracttext(self, response, number):
         text = Selector(response).xpath('//div[@class="texto_completo"]').extract()
         pages = Selector(response).xpath('//div[@class="texto_completo"]/p/a/@name').extract()
         #if is first
-        firstofpage = re.search('gina(.+?)\)', pages[0]).group(1)
+        firstopage = re.search('gina(.+?)\)', pages[0]).group(1)
 
         #pdb.set_trace()
 
@@ -185,7 +229,7 @@ class StackSpider(Spider):
             if re.search("gina" + number + '\)', i):
                 control = True
                 continue
-            elif int(number) < int(firstofpage):
+            elif int(number) < int(firstopage):
                 control = True
             if control and re.search('gina' + str(int(number) + 1) + '\)', i):
                 break
