@@ -30,7 +30,6 @@ class StackSpider(Spider):
     ]
 
 
-
     def parse(self, response):
         list_types = Selector(response).xpath('//div[@class="listado_1"]//ul/li/a/@href')
         for types in list_types:
@@ -45,7 +44,9 @@ class StackSpider(Spider):
 
 
     def initiatives(self, response):
+
         first_url = Selector(response).xpath('//div[@class="resultados_encontrados"]/p/a/@href').extract()[0]
+
         num_inis = Selector(response).xpath('//div[@class="SUBTITULO_CONTENIDO"]/span/text()').extract()
         split = first_url.partition("&DOCS=1-1")
         #TEST FOR A initiative
@@ -56,11 +57,9 @@ class StackSpider(Spider):
         #yield scrapy.Request("http://www.congreso.es/portal/page/portal/Congreso/Congreso/Iniciativas/Indice%20de%20Iniciativas?_piref73_1335503_73_1335500_1335500.next_page=/wc/servidorCGI&CMD=VERLST&BASE=IW11&PIECE=IWC1&FMT=INITXD1S.fmt&FORM1=INITXLUS.fmt&DOCS=1-1&QUERY=%28I%29.ACIN1.+%26+%28186%29.SINI.",callback=self.oneinitiative)
 
         #some
-        #yield scrapy.Request("http://www.congreso.es/portal/page/portal/Congreso/Congreso/Iniciativas?_piref73_2148295_73_1335437_1335437.next_page=/wc/servidorCGI&CMD=VERLST&BASE=IW10&PIECE=IWD0&FMT=INITXD1S.fmt&FORM1=INITXLUS.fmt&DOCS=8-8&QUERY=%28I%29.ACIN1.+%26+%28005%29.SINI.",callback=self.oneinitiative)
-        #yield scrapy.Request("http://www.congreso.es/portal/page/portal/Congreso/Congreso/Iniciativas?_piref73_2148295_73_1335437_1335437.next_paghttp://www.congreso.es/portal/page/portal/Congreso/Congreso/Iniciativas?_piref73_2148295_73_1335437_1335437.next_page=/wc/servidorCGI&CMD=VERLST&BASE=IW11&PIECE=IWC1&FMT=INITXD1S.fmt&FORM1=INITXLUS.fmt&DOCS=3-3&QUERY=%28I%29.ACIN1.+%26+%28189%29.SINI.",callback=self.oneinitiative)
+        yield scrapy.Request("http://www.congreso.es/portal/page/portal/Congreso/Congreso/Iniciativas?_piref73_2148295_73_1335437_1335437.next_page=/wc/servidorCGI&CMD=VERLST&BASE=IW10&PIECE=IWD0&FMT=INITXD1S.fmt&FORM1=INITXLUS.fmt&DOCS=8-8&QUERY=%28I%29.ACIN1.+%26+%28005%29.SINI.",callback=self.oneinitiative)
 
-        #yield scrapy.Request("http://www.congreso.es/portal/page/portal/Congreso/Congreso/Iniciativas/Indice%20de%20Iniciativas?_piref73_1335503_73_1335500_1335500.next_page=/wc/servidorCGI&CMD=VERLST&BASE=IW11&PIECE=IWA1&FMT=INITXD1S.fmt&FORM1=INITXLUS.fmt&DOCS=5-5&QUERY=%28I%29.ACIN1.+%26+%28125%29.SINI.",callback=self.oneinitiative)
-        yield scrapy.Request("http://www.congreso.es/portal/page/portal/Congreso/Congreso/Iniciativas/Indice%20de%20Iniciativas?_piref73_1335503_73_1335500_1335500.next_page=/wc/servidorCGI&CMD=VERLST&BASE=IW11&PIECE=IWD1&FMT=INITXD1S.fmt&FORM1=INITXLUS.fmt&DOCS=15-15&QUERY=%28I%29.ACIN1.+%26+%28295%29.SINI.",callback=self.oneinitiative)
+        #yield scrapy.Request("http://www.congreso.es/portal/page/portal/Congreso/Congreso/Iniciativas/Indice%20de%20Iniciativas?_piref73_1335503_73_1335500_1335500.next_page=/wc/servidorCGI&CMD=VERLST&BASE=IW11&PIECE=IWA1&FMT=INITXD1S.fmt&FORM1=INITXLUS.fmt&DOCS=1-1&QUERY=%28I%29.ACIN1.+%26+%28080%29.SINI.",callback=self.oneinitiative)
 
 
         #for i in range(1,int(num_inis[0])+1):
@@ -77,14 +76,30 @@ class StackSpider(Spider):
         p[@class="apartado_iniciativa"][1]/preceding-sibling::p[preceding-sibling::p[. = "Autor:\n"]]')
 
 
-        boletines = Selector(response).xpath('//div[@class="ficha_iniciativa"]/p[@class="apartado_iniciativa"\
+        ##DEPENDE DE DONDE ESTEN SITUADOS LOS BOLETINES
+        #si no estan los ultimos
+        bol = Selector(response).xpath('//div[@class="ficha_iniciativa"]/p[@class="apartado_iniciativa"\
+         and text()="Boletines:" ]/following-sibling::\
+        p[@class="apartado_iniciativa"][1]/preceding-sibling::p[preceding-sibling::p[. = "Boletines:"]]')
+
+
+        #si estan los ultimos
+        bol1= Selector(response).xpath('//div[@class="ficha_iniciativa"]/p[@class="apartado_iniciativa"\
             and text()="Boletines:" ]/following-sibling::\
            p[@class="texto"]')
+
+        #switch para saber si esta el ultimo o no
+        if bol:
+            boletines = bol
+        elif not bol:
+            boletines = bol1
+        else:
+            boletines = False
 
 
 
         listautors=[]
-        listboletines = []
+
 
         for autor in autors:
             add = autor.xpath("a/b/text()").extract()
@@ -100,7 +115,6 @@ class StackSpider(Spider):
         item["publications"]=[]
 
 
-
         if boletines:
             urls = boletines.xpath("a/@href").extract()
             listurls = []
@@ -112,7 +126,7 @@ class StackSpider(Spider):
             last_url = listurls[-1]
             number = self.getnumber(last_url)
             self.dellastelement(listurls)
-            yield scrapy.Request(last_url,callback=self.recursiveletters, dont_filter = False,  meta={'pag': number, 'item':item,'urls':listurls, 'isfirst': True })
+            yield scrapy.Request(last_url,callback=self.recursiveletters, dont_filter = False,  meta={'pag': number, 'item':item,'urls':listurls, 'isfirst': True, 'next':False })
 
 
         else:
@@ -130,63 +144,80 @@ class StackSpider(Spider):
         item = response.meta['item']
         listurls = response.meta['urls']
         isfirst = response.meta['isfirst']
+        urls = response.meta['next']
+
+
+
+        pages = Selector(response).xpath('//p/a/@name').extract()
+        if pages:
+            #aqui se busca
+            haspage = [ch for ch in pages if re.search('gina' + number + '\)', ch)]
+        else:
+            haspage = True
+        #pdb.set_trace()
+        try:
+            firstopage = re.search('gina(.+?)\)', pages[0]).group(1)
+        except:
+            firstopage= "1"
+
+        if not haspage and int(number)!= int(firstopage)-1 and pages:
+            #solo hasta siguiente
+            urlstopass = Selector(response).xpath('//p[@class="texto_completo"]/a[not(text()="Siguiente\n    >>")]/@href').extract()
+            next_url = False
+            if urlstopass and not urls:
+
+                urls =  [i for i in urlstopass[0:len(urlstopass)/2]  ]
+                url = urls[-1]
+                next_url = urlparse.urljoin(response.url, url)
+                self.dellastelement(urls)
+            elif urls:
+                url = urls[-1]
+                next_url = urlparse.urljoin(response.url, url)
+                self.dellastelement(urls)
+            else:
+                #No lo encuentra porque esta mal organizado
+                pdb.set_trace()
+                err = "Errror  "+number + " URL: "+response.url
+
+                item["publications"].append(err)
+
+                yield item
+
+            if next_url:
+                if isfirst:
+                    yield scrapy.Request(next_url,callback=self.recursiveletters, dont_filter = False,  meta={'pag': number, 'item':item,'urls':listurls, 'isfirst':True,'next':urls })
+                else:
+                    yield scrapy.Request(next_url,callback=self.recursiveletters, dont_filter = False,  meta={'pag': number, 'item':item,'urls':listurls, 'isfirst':False, 'next':urls })
+
+
+
+
         if isfirst:
+            last_url = listurls[-1]
+            number = self.getnumber(last_url)
+            self.dellastelement(listurls)
             item["publications"].append(self.searchpages(response,number))
+            yield scrapy.Request(last_url,callback=self.recursiveletters, dont_filter = False,  meta={'pag': number, 'item':item,'urls':listurls, 'isfirst':False , 'next':False})
 
-
+            #este es el que devuelve el objeto, cuando no quedan urls
         if not listurls:
-
+            pdb.set_trace()
             yield item
+
         else:
             last_url = listurls[-1]
             number = self.getnumber(last_url)
             self.dellastelement(listurls)
             item["publications"].append(self.searchpages(response,number))
-            yield scrapy.Request(last_url,callback=self.recursiveletters, dont_filter = False,  meta={'pag': number, 'item':item,'urls':listurls, 'isfirst':False })
-
-
-
-
-        #return item
-
-    def extractnewsletters(self,response):
-        number = response.meta['pag']
-
-
-        try:
-            urls = Selector(response).xpath('//p[@class="texto_completo"]/a/@href').extract()
-        except:
-            urls = False
-        if not urls:
-
-            request =   scrapy.Request(response.url, callback=self.searchpages, meta={'pag': number})
-            yield request
-
-        else:
-            urls.append(response.url)
-            for i in urls:
-                newsletter_url = urlparse.urljoin(response.url, i)
-                request = scrapy.Request(newsletter_url, callback=self.searchpages, meta={'pag': number })
-                yield request
-
-
-
-
-
-
-
-
-
-
-
-
+            yield scrapy.Request(last_url,callback=self.recursiveletters, dont_filter = False,  meta={'pag': number, 'item':item,'urls':listurls, 'isfirst':False , 'next':False})
 
 
 
     def searchpages(self,response, number):
 
-        pages = Selector(response).xpath('//div[@class="texto_completo"]/p/a/@name').extract()
+        pages = Selector(response).xpath('///p/a/@name').extract()
         haspage = [ch for ch in pages if re.search('gina' + number + '\)', ch)]
+
 
         if haspage:
 
@@ -194,15 +225,14 @@ class StackSpider(Spider):
 
             return publications
         else:
-            return self.extracttext(response, number)
+            if number=="1":
+                return self.extracttext(response, number)
+            else:
 
-
-
-
-
-
-
-
+                try:
+                    return "Error  "+number + " URL: "+response.url
+                except:
+                    return "ERROR"
 
 
 
@@ -210,26 +240,22 @@ class StackSpider(Spider):
 
 
     def extracttext(self, response,number):
-        text = Selector(response).xpath('//div[@class="texto_completo"]').extract()
         pages = Selector(response).xpath('//div[@class="texto_completo"]/p/a/@name').extract()
-        #if is first
+        text = Selector(response).xpath('//div[@class="texto_completo"]').extract()
 
-
-        # text split
-        splittext = text[0].split("<br><br>")
         result = []
         control = False
 
         try:
-            firstopage = re.search('gina(.+?)\)', pages[0]).group(1)
+            firstopage = self.getnumber(pages[0])
         except:
             firstopage= "1"
             control = True
 
-
         # selecciona del texto solo la pagina que nos resulta útil
+        splittext = text[0].split("<br><br>")
         for i in splittext:
-            # pdb.set_trace()
+                # pdb.set_trace()
             if re.search("gina" + number + '\)', i):
                 control = True
                 continue
@@ -238,7 +264,8 @@ class StackSpider(Spider):
             if control and re.search('gina' + str(int(number) + 1) + '\)', i):
                 break
             if control:
-               result.append(i)
+                result.append(i)
+
 
         return self.removeHTMLtags(self.concatlist(result))
 
@@ -258,9 +285,10 @@ class StackSpider(Spider):
         except:
             found = False
         return found
+
+
     def removeHTMLtags(self,text):
         import re
-
         TAG_RE = re.compile(r'<[^>]+>')
         BLANK = re.compile(r'\n')
         text = TAG_RE.sub('', text)
