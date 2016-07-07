@@ -12,6 +12,7 @@ from scrapy.spiders import Rule
 
 
 class InitiativeItem(Item):
+    expt = Field()
     title = Field()
     autor = Field()
     url = Field()
@@ -57,10 +58,12 @@ class StackSpider(Spider):
         #yield scrapy.Request("http://www.congreso.es/portal/page/portal/Congreso/Congreso/Iniciativas/Indice%20de%20Iniciativas?_piref73_1335503_73_1335500_1335500.next_page=/wc/servidorCGI&CMD=VERLST&BASE=IW11&PIECE=IWC1&FMT=INITXD1S.fmt&FORM1=INITXLUS.fmt&DOCS=1-1&QUERY=%28I%29.ACIN1.+%26+%28186%29.SINI.",callback=self.oneinitiative)
 
         #some
-        #yield scrapy.Request("http://www.congreso.es/portal/page/portal/Congreso/Congreso/Iniciativas?_piref73_2148295_73_1335437_1335437.next_page=/wc/servidorCGI&CMD=VERLST&BASE=IW10&PIECE=IWD0&FMT=INITXD1S.fmt&FORM1=INITXLUS.fmt&DOCS=8-8&QUERY=%28I%29.ACIN1.+%26+%28005%29.SINI.",callback=self.oneinitiative)
+        yield scrapy.Request("http://www.congreso.es/portal/page/portal/Congreso/Congreso/Iniciativas?_piref73_2148295_73_1335437_1335437.next_page=/wc/servidorCGI&CMD=VERLST&BASE=IW10&PIECE=IWD0&FMT=INITXD1S.fmt&FORM1=INITXLUS.fmt&DOCS=8-8&QUERY=%28I%29.ACIN1.+%26+%28005%29.SINI.",callback=self.oneinitiative)
 
         #yield scrapy.Request("http://www.congreso.es/portal/page/portal/Congreso/Congreso/Iniciativas/Indice%20de%20Iniciativas?_piref73_1335503_73_1335500_1335500.next_page=/wc/servidorCGI&CMD=VERLST&BASE=IW11&PIECE=IWA1&FMT=INITXD1S.fmt&FORM1=INITXLUS.fmt&DOCS=1-1&QUERY=%28I%29.ACIN1.+%26+%28080%29.SINI.",callback=self.oneinitiative)
-        yield scrapy.Request("http://www.congreso.es/portal/page/portal/Congreso/Congreso/Iniciativas/Indice%20de%20Iniciativas?_piref73_1335503_73_1335500_1335500.next_page=/wc/servidorCGI&CMD=VERLST&BASE=IW11&PIECE=IWC1&FMT=INITXD1S.fmt&FORM1=INITXLUS.fmt&DOCS=13-13&QUERY=%28I%29.ACIN1.+%26+%28162%29.SINI.",callback=self.oneinitiative)
+
+        #ESTE DABA RUIDO
+        #yield scrapy.Request("http://www.congreso.es/portal/page/portal/Congreso/Congreso/Iniciativas/Indice%20de%20Iniciativas?_piref73_1335503_73_1335500_1335500.next_page=/wc/servidorCGI&CMD=VERLST&BASE=IW11&PIECE=IWC1&FMT=INITXD1S.fmt&FORM1=INITXLUS.fmt&DOCS=13-13&QUERY=%28I%29.ACIN1.+%26+%28162%29.SINI.",callback=self.oneinitiative)
 
 
         #for i in range(1,int(num_inis[0])+1):
@@ -70,7 +73,9 @@ class StackSpider(Spider):
 
     def oneinitiative(self,response):
         title = Selector(response).xpath('//p[@class="titulo_iniciativa"]/text()').extract()[0]
-        filter = Selector(response).xpath('//div[@class="ficha_iniciativa"]/p[@class="apartado_iniciativa"]/text()')
+        expt = re.search('\((.+?)\)', title).group(1)
+
+        #filter = Selector(response).xpath('//div[@class="ficha_iniciativa"]/p[@class="apartado_iniciativa"]/text()')
 
         autors = Selector(response).xpath('//div[@class="ficha_iniciativa"]/p[@class="apartado_iniciativa"\
          and text()="Autor:\n" ]/following-sibling::\
@@ -110,6 +115,7 @@ class StackSpider(Spider):
 
         item = InitiativeItem()
 
+        item['expt'] = expt
         item['title'] = title
         item['url'] = response.url
         item['autor'] = listautors
@@ -154,8 +160,8 @@ class StackSpider(Spider):
         isfirst = response.meta['isfirst']
         urls = response.meta['next']
         if isfirst=="a":
-            #pdb.set_trace()
-            pass
+            pdb.set_trace()
+
 
         pages = Selector(response).xpath('//p/a/@name').extract()
         if pages:
@@ -209,15 +215,16 @@ class StackSpider(Spider):
             if isfirst:
                 if haspage:
                     if not listurls:
-                        item["publications"].append(self.searchpages(response, number))
+                        item["publications"].append(self.searchpages(response, number,item["expt"]))
                         yield item
 
 
                     else:
+
+                        item["publications"].append(self.searchpages(response, number,item["expt"]))
                         last_url = listurls[-1]
                         number = self.getnumber(last_url)
                         self.dellastelement(listurls)
-                        item["publications"].append(self.searchpages(response, number))
 
                         yield scrapy.Request(last_url, callback=self.recursiveletters, dont_filter=False,
                                              meta={'pag': number, 'item': item, 'urls': listurls, 'isfirst': "a",
@@ -228,35 +235,35 @@ class StackSpider(Spider):
                     # Este es el esencial
             elif not listurls and not isfirst:
                     if haspage:
-                        item["publications"].append(self.searchpages(response, number))
+                        item["publications"].append(self.searchpages(response, number,item["expt"]))
                         yield item
 
                         #
             else:
                 if haspage:
+                    item["publications"].append(self.searchpages(response,number,item["expt"]))
+
                     last_url = listurls[-1]
                     number = self.getnumber(last_url)
                     self.dellastelement(listurls)
-                    item["publications"].append(self.searchpages(response,number))
                     yield scrapy.Request(last_url,callback=self.recursiveletters, dont_filter = False,  meta={'pag': number, 'item':item,'urls':listurls, 'isfirst':False , 'next':False})
 
 
 
-    def searchpages(self,response, number):
+    def searchpages(self,response, number, expt):
 
         pages = Selector(response).xpath('//p/a/@name').extract()
         haspage = [ch for ch in pages if re.search('gina' + number + '\)', ch)]
 
 
-        pdb.set_trace()
         if haspage:
 
-            publications = self.extracttext(response, number)
+            publications = self.extracttext(response, number,expt)
 
             return publications
         else:
             if number=="1":
-                return self.extracttext(response, number)
+                return self.extracttext(response, number,expt)
             else:
 
                 try:
@@ -266,15 +273,47 @@ class StackSpider(Spider):
 
 
 
+    def extracttext(self,response,number,expt):
+        textfragment = self.fragmenttxt(response,number)
+
+        return textfragment
+        """
+            #Es el texto entero y no hay que fragmentar
+            if not re.search(expt,textfragment):
+                return textfragment
+
+            diffexpt=len(re.findall('[0-9]{3}\/[0-9]{6}',textfragment))
+            numexpt=len(re.findall(expt,textfragment))
+
+            if diffexpt== numexpt:
+                return textfragment
+            else:
+                #aqui se fragmenta
+                pdb.set_trace()
+                pass
+
+
+            #re.search('[0-9]{3}\/[0-9]{6}',textfragment)
+
+
+            """
 
 
 
-    def extracttext(self, response,number):
+
+
+
+
+
+
+
+
+    def fragmenttxt(self, response,number):
         pages = Selector(response).xpath('//p/a/@name').extract()
         text = Selector(response).xpath('//div[@class="texto_completo"]').extract()
-
         result = []
         control = False
+
 
         try:
             firstopage = self.getnumber(pages[0])
@@ -286,16 +325,18 @@ class StackSpider(Spider):
         splittext = text[0].split("<br><br>")
         for i in splittext:
                 # pdb.set_trace()
-            if re.search("gina" + number + '\)', i):
+            #if re.search("gina" + number + '\)', i):
+            if self.checkPage(i,number):
                 control = True
                 continue
             elif int(number) < int(firstopage):
                 control = True
-            if control and re.search('gina' + str(int(number) + 1) + '\)', i):
+            if control  and self.checkPage(i,str(int(number)+1)):
                 break
             if control:
                 result.append(i)
-        pdb.set_trace()
+
+
         return self.removeHTMLtags(self.concatlist(result))
 
     #http://www.congreso.es/portal/page/portal/Congreso/Congreso/Iniciativas?_piref73_2148295_73_1335437_1335437.next_page=/wc/servidorCGI&CMD=VERLST&BASE=iwi6&FMT=INITXLTS.fmt&DOCS=1-50&DOCORDER=FIFO&OPDEF=Y&QUERY=%28I%29.ACIN1.
@@ -327,3 +368,14 @@ class StackSpider(Spider):
         BLANK = re.compile(r'\n')
         text = TAG_RE.sub('', text)
         return BLANK.sub('', text)
+
+    def checkPage(self, line, number):
+        control = True
+        regexps = ["gina" + number + '\)','name=']
+
+        for rege in regexps:
+            if not re.search(rege,line):
+                control= False
+                break
+        return control
+
