@@ -16,7 +16,6 @@ class InitiativeItem(Item):
     title = Field()
     autor = Field()
     url = Field()
-    publications = Field()
     A = Field()
     B = Field()
     D = Field()
@@ -122,7 +121,9 @@ class StackSpider(Spider):
         item['title'] = title
         item['url'] = response.url
         item['autor'] = listautors
-        item["publications"]=[]
+        item["A"]=[]
+        item["B"]=[]
+        item["D"]=[]
 
         #un boletin  es una lista con tipo y url
         if boletines:
@@ -187,17 +188,21 @@ class StackSpider(Spider):
 
 
         pages = Selector(response).xpath('//p/a/@name').extract()
-        if pages and not (int(pages[0]-1)==number):
-            #aqui se busca
-            haspage = [ch for ch in pages if re.search('gina' + number + '\)', ch)]
-        else:
-            haspage = True
-        #pdb.set_trace()
+
+
         try:
             firstopage = re.search('gina(.+?)\)', pages[0]).group(1)
         except:
             firstopage= "1"
-        pdb.set_trace()
+
+
+        if pages and not (str(int(firstopage)-1)==number):
+            #aqui se busca
+            haspage = [ch for ch in pages if re.search('gina' + number + '\)', ch)]
+        else:
+            haspage = True
+
+
 
         """
 
@@ -242,11 +247,11 @@ class StackSpider(Spider):
             if haspage:
                 if not listurls:
                     if itemserie=="A":
-                        item["A"].append(self.searchpages(response, number,item["expt"]))
+                        item["A"].append(self.searchpages(response, number,item["ref"]))
                     elif itemserie=="B":
-                        item["B"].append(self.searchpages(response, number,item["expt"]))
+                        item["B"].append(self.searchpages(response, number,item["ref"]))
                     elif itemserie=="D":
-                        item["D"].append(self.searchpages(response, number,item["expt"]))
+                        item["D"].append(self.searchpages(response, number,item["ref"]))
 
 
                     yield item
@@ -255,11 +260,11 @@ class StackSpider(Spider):
                 else:
 
                     if itemserie=="A":
-                        item["A"].append(self.searchpages(response, number,item["expt"]))
+                        item["A"].append(self.searchpages(response, number,item["ref"]))
                     elif itemserie=="B":
-                        item["B"].append(self.searchpages(response, number,item["expt"]))
+                        item["B"].append(self.searchpages(response, number,item["ref"]))
                     elif itemserie=="D":
-                        item["D"].append(self.searchpages(response, number,item["expt"]))
+                        item["D"].append(self.searchpages(response, number,item["ref"]))
                     first_url = self.geturl(listurls[0])
                     onlyserie = self.getserie(listurls[0])
 
@@ -275,11 +280,11 @@ class StackSpider(Spider):
                     yield item
                 else:
                     if itemserie=="A":
-                        item["A"].append(self.searchpages(response, number,item["expt"]))
+                        item["A"].append(self.searchpages(response, number,item["ref"]))
                     elif itemserie=="B":
-                        item["B"].append(self.searchpages(response, number,item["expt"]))
+                        item["B"].append(self.searchpages(response, number,item["ref"]))
                     elif itemserie=="D":
-                        item["D"].append(self.searchpages(response, number,item["expt"]))
+                        item["D"].append(self.searchpages(response, number,item["ref"]))
                     first_url = self.geturl(listurls[0])
                     onlyserie = self.getserie(listurls[0])
 
@@ -300,11 +305,11 @@ class StackSpider(Spider):
         elif not listurls and not isfirst:
                 if haspage:
                     if itemserie=="A":
-                        item["A"].append(self.searchpages(response, number,item["expt"]))
+                        item["A"].append(self.searchpages(response, number,item["ref"]))
                     elif itemserie=="B":
-                        item["B"].append(self.searchpages(response, number,item["expt"]))
+                        item["B"].append(self.searchpages(response, number,item["ref"]))
                     elif itemserie=="D":
-                        item["D"].append(self.searchpages(response, number,item["expt"]))
+                        item["D"].append(self.searchpages(response, number,item["ref"]))
                     yield item
                 else:
                     yield item
@@ -312,17 +317,18 @@ class StackSpider(Spider):
 
         else:
             if itemserie=="A":
-                item["A"].append(self.searchpages(response, number,item["expt"]))
+                item["A"].append(self.searchpages(response, number,item["ref"]))
             elif itemserie=="B":
-                item["B"].append(self.searchpages(response, number,item["expt"]))
+                item["B"].append(self.searchpages(response, number,item["ref"]))
             elif itemserie=="D":
-                item["D"].append(self.searchpages(response, number,item["expt"]))
+                item["D"].append(self.searchpages(response, number,item["ref"]))
 
             first_url = self.geturl(listurls[0])
             onlyserie = self.getserie(listurls[0])
 
             number = self.getnumber(first_url)
             self.delfirstelement(listurls)
+            pdb.set_trace()
             yield scrapy.Request(self.createUrl(response.url,first_url),callback=self.recursiveletters,
                                  dont_filter = False,  meta={'pag': number, 'item':item,'urls':listurls,
                                                              'isfirst':False , 'next':False,'serie':onlyserie})
@@ -333,7 +339,6 @@ class StackSpider(Spider):
 
         pages = Selector(response).xpath('//p/a/@name').extract()
         haspage = [ch for ch in pages if re.search('gina' + number + '\)', ch)]
-
 
         if haspage:
 
@@ -414,6 +419,7 @@ class StackSpider(Spider):
                 break
             if control:
                 result.append(i)
+
 
 
         return self.removeHTMLtags(self.concatlist(result))

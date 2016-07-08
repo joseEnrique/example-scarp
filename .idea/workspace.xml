@@ -2,7 +2,8 @@
 <project version="4">
   <component name="ChangeListManager">
     <list default="true" id="96dae07f-2292-477a-81a5-423fc7247189" name="Default" comment="">
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/stack1/initiatives.json" afterPath="$PROJECT_DIR$/stack1/initiatives.json" />
+      <change type="DELETED" beforePath="$PROJECT_DIR$/stack1/initiatives.json" afterPath="" />
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/.idea/workspace.xml" afterPath="$PROJECT_DIR$/.idea/workspace.xml" />
       <change type="MODIFICATION" beforePath="$PROJECT_DIR$/stack1/stack1/spiders/initiatives.py" afterPath="$PROJECT_DIR$/stack1/stack1/spiders/initiatives.py" />
     </list>
     <ignored path="example-scrap.iws" />
@@ -24,23 +25,11 @@
   </component>
   <component name="FileEditorManager">
     <leaf SIDE_TABS_SIZE_LIMIT_KEY="300">
-      <file leaf-file-name="initiatives.json" pinned="false" current-in-tab="false">
-        <entry file="file://$PROJECT_DIR$/stack1/initiatives.json">
-          <provider selected="true" editor-type-id="text-editor">
-            <state vertical-scroll-proportion="-3.75">
-              <caret line="6" column="0" selection-start-line="6" selection-start-column="0" selection-end-line="6" selection-end-column="0" />
-              <folding>
-                <marker date="1467962536920" expanded="true" signature="0:3" placeholder="[...]" />
-              </folding>
-            </state>
-          </provider>
-        </entry>
-      </file>
       <file leaf-file-name="initiatives.py" pinned="false" current-in-tab="true">
         <entry file="file://$PROJECT_DIR$/stack1/stack1/spiders/initiatives.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state vertical-scroll-proportion="0.29765886">
-              <caret line="190" column="26" selection-start-line="190" selection-start-column="26" selection-end-line="190" selection-end-column="26" />
+            <state vertical-scroll-proportion="0.72408026">
+              <caret line="251" column="86" selection-start-line="251" selection-start-column="86" selection-end-line="251" selection-end-column="86" />
               <folding />
             </state>
           </provider>
@@ -738,18 +727,16 @@
     </entry>
     <entry file="file://$PROJECT_DIR$/stack1/initiatives.json">
       <provider selected="true" editor-type-id="text-editor">
-        <state vertical-scroll-proportion="-3.75">
-          <caret line="6" column="0" selection-start-line="6" selection-start-column="0" selection-end-line="6" selection-end-column="0" />
-          <folding>
-            <marker date="1467962536920" expanded="true" signature="0:3" placeholder="[...]" />
-          </folding>
+        <state vertical-scroll-proportion="0.0">
+          <caret line="0" column="0" selection-start-line="0" selection-start-column="0" selection-end-line="0" selection-end-column="0" />
+          <folding />
         </state>
       </provider>
     </entry>
     <entry file="file://$PROJECT_DIR$/stack1/stack1/spiders/initiatives.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state vertical-scroll-proportion="0.29765886">
-          <caret line="190" column="26" selection-start-line="190" selection-start-column="26" selection-end-line="190" selection-end-column="26" />
+        <state vertical-scroll-proportion="0.72408026">
+          <caret line="251" column="86" selection-start-line="251" selection-start-column="86" selection-end-line="251" selection-end-column="86" />
           <folding />
         </state>
       </provider>
