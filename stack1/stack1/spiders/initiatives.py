@@ -12,11 +12,14 @@ from scrapy.spiders import Rule
 
 
 class InitiativeItem(Item):
-    expt = Field()
+    ref = Field()
     title = Field()
     autor = Field()
     url = Field()
     publications = Field()
+    A = Field()
+    B = Field()
+    D = Field()
 
 
 
@@ -51,19 +54,19 @@ class StackSpider(Spider):
         num_inis = Selector(response).xpath('//div[@class="SUBTITULO_CONTENIDO"]/span/text()').extract()
         split = first_url.partition("&DOCS=1-1")
         #TEST FOR A initiative
-        #only one
+        #only one este tiene dos boletines
         #yield scrapy.Request("http://www.congreso.es/portal/page/portal/Congreso/Congreso/Iniciativas/Indice%20de%20Iniciativas?_piref73_1335503_73_1335500_1335500.next_page=/wc/servidorCGI&CMD=VERLST&BASE=IW11&PIECE=IWA1&FMT=INITXD1S.fmt&FORM1=INITXLUS.fmt&DOCS=5-5&QUERY=%28I%29.ACIN1.+%26+%28125%29.SINI.",callback=self.oneinitiative)
 
         #one with link
         #yield scrapy.Request("http://www.congreso.es/portal/page/portal/Congreso/Congreso/Iniciativas/Indice%20de%20Iniciativas?_piref73_1335503_73_1335500_1335500.next_page=/wc/servidorCGI&CMD=VERLST&BASE=IW11&PIECE=IWC1&FMT=INITXD1S.fmt&FORM1=INITXLUS.fmt&DOCS=1-1&QUERY=%28I%29.ACIN1.+%26+%28186%29.SINI.",callback=self.oneinitiative)
 
         #some
-        yield scrapy.Request("http://www.congreso.es/portal/page/portal/Congreso/Congreso/Iniciativas?_piref73_2148295_73_1335437_1335437.next_page=/wc/servidorCGI&CMD=VERLST&BASE=IW10&PIECE=IWD0&FMT=INITXD1S.fmt&FORM1=INITXLUS.fmt&DOCS=8-8&QUERY=%28I%29.ACIN1.+%26+%28005%29.SINI.",callback=self.oneinitiative)
+        #yield scrapy.Request("http://www.congreso.es/portal/page/portal/Congreso/Congreso/Iniciativas?_piref73_2148295_73_1335437_1335437.next_page=/wc/servidorCGI&CMD=VERLST&BASE=IW10&PIECE=IWD0&FMT=INITXD1S.fmt&FORM1=INITXLUS.fmt&DOCS=8-8&QUERY=%28I%29.ACIN1.+%26+%28005%29.SINI.",callback=self.oneinitiative)
 
         #yield scrapy.Request("http://www.congreso.es/portal/page/portal/Congreso/Congreso/Iniciativas/Indice%20de%20Iniciativas?_piref73_1335503_73_1335500_1335500.next_page=/wc/servidorCGI&CMD=VERLST&BASE=IW11&PIECE=IWA1&FMT=INITXD1S.fmt&FORM1=INITXLUS.fmt&DOCS=1-1&QUERY=%28I%29.ACIN1.+%26+%28080%29.SINI.",callback=self.oneinitiative)
 
         #ESTE DABA RUIDO
-        #yield scrapy.Request("http://www.congreso.es/portal/page/portal/Congreso/Congreso/Iniciativas/Indice%20de%20Iniciativas?_piref73_1335503_73_1335500_1335500.next_page=/wc/servidorCGI&CMD=VERLST&BASE=IW11&PIECE=IWC1&FMT=INITXD1S.fmt&FORM1=INITXLUS.fmt&DOCS=13-13&QUERY=%28I%29.ACIN1.+%26+%28162%29.SINI.",callback=self.oneinitiative)
+        yield scrapy.Request("http://www.congreso.es/portal/page/portal/Congreso/Congreso/Iniciativas/Indice%20de%20Iniciativas?_piref73_1335503_73_1335500_1335500.next_page=/wc/servidorCGI&CMD=VERLST&BASE=IW11&PIECE=IWC1&FMT=INITXD1S.fmt&FORM1=INITXLUS.fmt&DOCS=13-13&QUERY=%28I%29.ACIN1.+%26+%28162%29.SINI.",callback=self.oneinitiative)
 
 
         #for i in range(1,int(num_inis[0])+1):
@@ -115,26 +118,47 @@ class StackSpider(Spider):
 
         item = InitiativeItem()
 
-        item['expt'] = expt
+        item['ref'] = expt
         item['title'] = title
         item['url'] = response.url
         item['autor'] = listautors
         item["publications"]=[]
 
-
+        #un boletin  es una lista con tipo y url
         if boletines:
-            urls = boletines.xpath("a/@href").extract()
-            listurls = []
 
-            for url in urls:
-                newsletter_url = urlparse.urljoin(response.url, url)
-                listurls.append(newsletter_url)
+
+            listurls=[]
+
+            for boletin in boletines:
+                text=boletin.xpath("text()").extract()
+                try:
+
+                    serie= re.search('m. (.+?)-', text[0]).group(1)
+
+                except:
+                    serie = False
+                url = boletin.xpath("a/@href").extract()
+
+                if serie :
+                    listserie =[]
+                    listserie.append(serie)
+                    listserie.append(url[0])
+                    listurls.append(listserie)
+
+
             #se quita duplicadas
-            listurls= list(set(listurls))
-            last_url = listurls[-1]
-            number = self.getnumber(last_url)
-            self.dellastelement(listurls)
-            yield scrapy.Request(last_url,callback=self.recursiveletters, dont_filter = False,  meta={'pag': number, 'item':item,'urls':listurls, 'isfirst': True, 'next':False })
+            #listurls= list(set(listurls))
+
+
+            first_url = self.geturl(listurls[0])
+            onlyserie = self.getserie(listurls[0])
+
+            number = self.getnumber(first_url)
+            self.delfirstelement(listurls)
+            yield scrapy.Request(self.createUrl(response.url,first_url),callback=self.recursiveletters, dont_filter = False,
+                                 meta={'pag': number, 'item':item,'urls':listurls, 'isfirst': True, 'next':False,
+                                       'serie': onlyserie })
 
 
         else:
@@ -159,12 +183,11 @@ class StackSpider(Spider):
         listurls = response.meta['urls']
         isfirst = response.meta['isfirst']
         urls = response.meta['next']
-        if isfirst=="a":
-            pdb.set_trace()
+        itemserie = response.meta['serie']
 
 
         pages = Selector(response).xpath('//p/a/@name').extract()
-        if pages:
+        if pages and not (int(pages[0]-1)==number):
             #aqui se busca
             haspage = [ch for ch in pages if re.search('gina' + number + '\)', ch)]
         else:
@@ -174,6 +197,9 @@ class StackSpider(Spider):
             firstopage = re.search('gina(.+?)\)', pages[0]).group(1)
         except:
             firstopage= "1"
+        pdb.set_trace()
+
+        """
 
         if not haspage and int(number)!= int(firstopage)-1 and pages:
             #solo hasta siguiente
@@ -211,42 +237,95 @@ class StackSpider(Spider):
         else:
         # si encuentras
 
+        """
+        if isfirst:
+            if haspage:
+                if not listurls:
+                    if itemserie=="A":
+                        item["A"].append(self.searchpages(response, number,item["expt"]))
+                    elif itemserie=="B":
+                        item["B"].append(self.searchpages(response, number,item["expt"]))
+                    elif itemserie=="D":
+                        item["D"].append(self.searchpages(response, number,item["expt"]))
 
-            if isfirst:
-                if haspage:
-                    if not listurls:
-                        item["publications"].append(self.searchpages(response, number,item["expt"]))
-                        yield item
+
+                    yield item
 
 
-                    else:
+                else:
 
-                        item["publications"].append(self.searchpages(response, number,item["expt"]))
-                        last_url = listurls[-1]
-                        number = self.getnumber(last_url)
-                        self.dellastelement(listurls)
+                    if itemserie=="A":
+                        item["A"].append(self.searchpages(response, number,item["expt"]))
+                    elif itemserie=="B":
+                        item["B"].append(self.searchpages(response, number,item["expt"]))
+                    elif itemserie=="D":
+                        item["D"].append(self.searchpages(response, number,item["expt"]))
+                    first_url = self.geturl(listurls[0])
+                    onlyserie = self.getserie(listurls[0])
 
-                        yield scrapy.Request(last_url, callback=self.recursiveletters, dont_filter=False,
+                    number = self.getnumber(first_url)
+                    self.delfirstelement(listurls)
+
+                    yield scrapy.Request(first_url, callback=self.recursiveletters, dont_filter=False,
                                              meta={'pag': number, 'item': item, 'urls': listurls, 'isfirst': "a",
-                                                   'next': False})
+                                                   'next': False, 'serie':onlyserie})
+            #no tiene pagina
+            else:
+                if not listurls:
+                    yield item
+                else:
+                    if itemserie=="A":
+                        item["A"].append(self.searchpages(response, number,item["expt"]))
+                    elif itemserie=="B":
+                        item["B"].append(self.searchpages(response, number,item["expt"]))
+                    elif itemserie=="D":
+                        item["D"].append(self.searchpages(response, number,item["expt"]))
+                    first_url = self.geturl(listurls[0])
+                    onlyserie = self.getserie(listurls[0])
+
+                    number = self.getnumber(first_url)
+                    self.delfirstelement(listurls)
+
+                    yield scrapy.Request(first_url, callback=self.recursiveletters, dont_filter=False,
+                                             meta={'pag': number, 'item': item, 'urls': listurls, 'isfirst': "a",
+                                                   'next': False, 'serie':onlyserie})
+
+
+
+
 
 
                     #este es el que devuelve el objeto, cuando no quedan urls
                     # Este es el esencial
-            elif not listurls and not isfirst:
-                    if haspage:
-                        item["publications"].append(self.searchpages(response, number,item["expt"]))
-                        yield item
-
-                        #
-            else:
+        elif not listurls and not isfirst:
                 if haspage:
-                    item["publications"].append(self.searchpages(response,number,item["expt"]))
+                    if itemserie=="A":
+                        item["A"].append(self.searchpages(response, number,item["expt"]))
+                    elif itemserie=="B":
+                        item["B"].append(self.searchpages(response, number,item["expt"]))
+                    elif itemserie=="D":
+                        item["D"].append(self.searchpages(response, number,item["expt"]))
+                    yield item
+                else:
+                    yield item
 
-                    last_url = listurls[-1]
-                    number = self.getnumber(last_url)
-                    self.dellastelement(listurls)
-                    yield scrapy.Request(last_url,callback=self.recursiveletters, dont_filter = False,  meta={'pag': number, 'item':item,'urls':listurls, 'isfirst':False , 'next':False})
+
+        else:
+            if itemserie=="A":
+                item["A"].append(self.searchpages(response, number,item["expt"]))
+            elif itemserie=="B":
+                item["B"].append(self.searchpages(response, number,item["expt"]))
+            elif itemserie=="D":
+                item["D"].append(self.searchpages(response, number,item["expt"]))
+
+            first_url = self.geturl(listurls[0])
+            onlyserie = self.getserie(listurls[0])
+
+            number = self.getnumber(first_url)
+            self.delfirstelement(listurls)
+            yield scrapy.Request(self.createUrl(response.url,first_url),callback=self.recursiveletters,
+                                 dont_filter = False,  meta={'pag': number, 'item':item,'urls':listurls,
+                                                             'isfirst':False , 'next':False,'serie':onlyserie})
 
 
 
@@ -340,6 +419,8 @@ class StackSpider(Spider):
         return self.removeHTMLtags(self.concatlist(result))
 
     #http://www.congreso.es/portal/page/portal/Congreso/Congreso/Iniciativas?_piref73_2148295_73_1335437_1335437.next_page=/wc/servidorCGI&CMD=VERLST&BASE=iwi6&FMT=INITXLTS.fmt&DOCS=1-50&DOCORDER=FIFO&OPDEF=Y&QUERY=%28I%29.ACIN1.
+
+
     def concatlist(self, list):
         return ' '.join( elem for elem in list)
 
@@ -378,4 +459,15 @@ class StackSpider(Spider):
                 control= False
                 break
         return control
+
+    def geturl(self,list):
+        return list[1]
+
+
+    def getserie(self, list):
+        return list[0]
+
+    def createUrl(self,base,href):
+        url = urlparse.urljoin(base, href)
+        return url
 
