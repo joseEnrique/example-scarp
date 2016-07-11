@@ -186,7 +186,6 @@ class StackSpider(Spider):
         urls = response.meta['next']
         itemserie = response.meta['serie']
 
-
         pages = Selector(response).xpath('//p/a/@name').extract()
 
 
@@ -252,7 +251,7 @@ class StackSpider(Spider):
                         item["B"].append(self.searchpages(response, number,item["ref"]))
                     elif itemserie=="D":
                         item["D"].append(self.searchpages(response, number,item["ref"]))
-
+                    pdb.set_trace()
 
                     yield item
 
@@ -271,12 +270,23 @@ class StackSpider(Spider):
                     number = self.getnumber(first_url)
                     self.delfirstelement(listurls)
 
-                    yield scrapy.Request(first_url, callback=self.recursiveletters, dont_filter=False,
-                                             meta={'pag': number, 'item': item, 'urls': listurls, 'isfirst': "a",
+
+                    yield scrapy.Request(self.createUrl(response.url,first_url), callback=self.recursiveletters, dont_filter=False,
+                                             meta={'pag': number, 'item': item, 'urls': listurls, 'isfirst': False,
                                                    'next': False, 'serie':onlyserie})
             #no tiene pagina
             else:
+                pdb.set_trace()
                 if not listurls:
+
+                    if itemserie=="A":
+                        item["A"].append(self.searchpages(response, number,item["ref"]))
+                    elif itemserie=="B":
+                        item["B"].append(self.searchpages(response, number,item["ref"]))
+                    elif itemserie=="D":
+                        item["D"].append(self.searchpages(response, number,item["ref"]))
+
+                    pdb.set_trace()
                     yield item
                 else:
                     if itemserie=="A":
@@ -291,7 +301,7 @@ class StackSpider(Spider):
                     number = self.getnumber(first_url)
                     self.delfirstelement(listurls)
 
-                    yield scrapy.Request(first_url, callback=self.recursiveletters, dont_filter=False,
+                    yield scrapy.Request(self.createUrl(response.url,first_url), callback=self.recursiveletters, dont_filter=False,
                                              meta={'pag': number, 'item': item, 'urls': listurls, 'isfirst': "a",
                                                    'next': False, 'serie':onlyserie})
 
