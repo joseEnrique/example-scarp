@@ -65,7 +65,7 @@ class StackSpider(Spider):
         #yield scrapy.Request("http://www.congreso.es/portal/page/portal/Congreso/Congreso/Iniciativas/Indice%20de%20Iniciativas?_piref73_1335503_73_1335500_1335500.next_page=/wc/servidorCGI&CMD=VERLST&BASE=IW11&PIECE=IWA1&FMT=INITXD1S.fmt&FORM1=INITXLUS.fmt&DOCS=1-1&QUERY=%28I%29.ACIN1.+%26+%28080%29.SINI.",callback=self.oneinitiative)
 
         #ESTE DABA RUIDO
-        yield scrapy.Request("http://www.congreso.es/portal/page/portal/Congreso/Congreso/Iniciativas/Indice%20de%20Iniciativas?_piref73_1335503_73_1335500_1335500.next_page=/wc/servidorCGI&CMD=VERLST&BASE=IW11&PIECE=IWC1&FMT=INITXD1S.fmt&FORM1=INITXLUS.fmt&DOCS=13-13&QUERY=%28I%29.ACIN1.+%26+%28162%29.SINI.",callback=self.oneinitiative)
+        yield scrapy.Request("http://www.congreso.es/portal/page/portal/Congreso/Congreso/Iniciativas?_piref73_2148295_73_1335437_1335437.next_page=/wc/servidorCGI&CMD=VERLST&BASE=IW11&PIECE=IWA1&FMT=INITXD1S.fmt&FORM1=INITXLUS.fmt&DOCS=1-1&QUERY=%28I%29.ACIN1.+%26+%28132%29.SINI.",callback=self.oneinitiative)
         #yield scrapy.Request("http://www.congreso.es/portal/page/portal/Congreso/Congreso/Iniciativas/Indice%20de%20Iniciativas?_piref73_1335503_73_1335500_1335500.next_page=/wc/servidorCGI&CMD=VERLST&BASE=IW11&PIECE=IWC1&FMT=INITXD1S.fmt&FORM1=INITXLUS.fmt&DOCS=25-25&QUERY=%28I%29.ACIN1.+%26+%28212%29.SINI.",callback=self.oneinitiative)
 
 
@@ -192,19 +192,6 @@ class StackSpider(Spider):
         #si tiene paginador lo descartamos
         descarte = Selector(response).xpath('//p[@class="texto_completo"]')
 
-        if descarte:
-            if listurls:
-                first_url = self.geturl(listurls[0])
-                onlyserie = self.getserie(listurls[0])
-
-                number = self.getnumber(first_url)
-                self.delfirstelement(listurls)
-                yield scrapy.Request(self.createUrl(response.url,first_url),callback=self.recursiveletters,
-                                 dont_filter = False,  meta={'pag': number, 'item':item,'urls':listurls,
-                                                             'isfirst':isfirst ,'serie':onlyserie})
-            else:
-                yield item
-
 
 
 
@@ -263,7 +250,21 @@ class StackSpider(Spider):
         # si encuentras
 
         """
-        if isfirst and not descarte:
+
+        if descarte:
+            if listurls:
+                first_url = self.geturl(listurls[0])
+                onlyserie = self.getserie(listurls[0])
+
+                number = self.getnumber(first_url)
+                self.delfirstelement(listurls)
+                yield scrapy.Request(self.createUrl(response.url,first_url),callback=self.recursiveletters,
+                                 dont_filter = False,  meta={'pag': number, 'item':item,'urls':listurls,
+                                                             'isfirst':isfirst ,'serie':onlyserie})
+            else:
+                yield item
+
+        elif isfirst and not descarte:
             if haspage:
                 if not listurls:
                     if itemserie=="A":
@@ -390,19 +391,41 @@ class StackSpider(Spider):
 
 
         #Es el texto entero y no hay que fragmentar
-        if not re.search(ref,textfragment):
-            return textfragment
+        if not self.checkownRef(textfragment,ref):
+            return self.removeHTMLtags(textfragment)
 
-        diffexpt=len(re.findall('[0-9]{3}\/[0-9]{6}',textfragment))
-        numexpt=len(re.findall(ref,textfragment))
-        if diffexpt== numexpt:
-            self.extractbyref(textfragment,ref)
-            return textfragment
+        diffexpt=re.findall('[0-9]{3}\/[0-9]{6}',textfragment)
+
+        numexpt=re.findall(ref,textfragment)
+        if len(diffexpt) == len(numexpt):
+            texto = self.extractbyref(textfragment,ref)
+            pages = Selector(response).xpath('//p/a/@name').extract()
+            numbers = []
+            #bbusca mas texto
+            for page in pages:
+                num = self.getnumber(page)
+                if int(num)> int(number):
+                    textfragment = self.fragmenttxt(response, num)
+                    texto += self.extractother(textfragment, ref)
+
+                    if not self.checkownRef(textfragment, ref) and self.checkotherRef(textfragment):
+                        break
+            res = self.removeHTMLtags(texto)
+
+
         else:
-                #aqui se fragmenta
-            pdb.set_trace()
-            pass
+            res = self.extractbyref(textfragment,ref)
+            res = self.removeHTMLtags(res)
 
+        return res
+
+
+
+
+
+
+
+        return res
 
             #re.search('[0-9]{3}\/[0-9]{6}',textfragment)
 
@@ -410,17 +433,35 @@ class StackSpider(Spider):
     def extractbyref(self,text,ref):
         splittext = text.split("<br><br>")
         control = False
+        result = []
+
 
         for line in splittext:
-            pass
+            if self.checkownRef(line,ref):
+                control = True
+            if not self.checkownRef(line, ref) and self.checkotherRef(line):
+                control = False
+            if control:
+                result.append(line)
 
-        pdb.set_trace()
+        return self.concatlist(result)
+
+
+    def extractother(self,text,ref):
+        splittext = text.split("<br><br>")
+        control = True
+        result = []
+
+
+        for line in splittext:
+            if control:
+                result.append(line)
+            if not self.checkownRef(line, ref) and self.checkotherRef(line):
+                control = False
 
 
 
-
-
-
+        return self.concatlist(result)
 
 
 
@@ -462,7 +503,10 @@ class StackSpider(Spider):
 
 
     def concatlist(self, list):
-        return '<br><br>'.join( elem for elem in list)
+        if list:
+            return '<br><br>'.join( elem for elem in list)
+        else:
+            return ''
 
     def dellastelement(self,list):
 
@@ -498,6 +542,18 @@ class StackSpider(Spider):
             if not re.search(rege,line):
                 control= False
                 break
+        return control
+    def checkownRef(self, line, ref):
+        control = True
+        if not re.search(ref,line):
+            control = False
+        return control
+
+    def checkotherRef(self, line):
+        control = True
+        if not re.search('[0-9]{3}\/[0-9]{6}',line):
+            control = False
+
         return control
 
     def geturl(self,list):
