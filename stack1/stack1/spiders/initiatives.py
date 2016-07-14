@@ -66,6 +66,7 @@ class StackSpider(Spider):
 
         #ESTE DABA RUIDO
         yield scrapy.Request("http://www.congreso.es/portal/page/portal/Congreso/Congreso/Iniciativas/Indice%20de%20Iniciativas?_piref73_1335503_73_1335500_1335500.next_page=/wc/servidorCGI&CMD=VERLST&BASE=IW11&PIECE=IWC1&FMT=INITXD1S.fmt&FORM1=INITXLUS.fmt&DOCS=13-13&QUERY=%28I%29.ACIN1.+%26+%28162%29.SINI.",callback=self.oneinitiative)
+        #yield scrapy.Request("http://www.congreso.es/portal/page/portal/Congreso/Congreso/Iniciativas/Indice%20de%20Iniciativas?_piref73_1335503_73_1335500_1335500.next_page=/wc/servidorCGI&CMD=VERLST&BASE=IW11&PIECE=IWC1&FMT=INITXD1S.fmt&FORM1=INITXLUS.fmt&DOCS=25-25&QUERY=%28I%29.ACIN1.+%26+%28212%29.SINI.",callback=self.oneinitiative)
 
 
         #for i in range(1,int(num_inis[0])+1):
@@ -75,7 +76,7 @@ class StackSpider(Spider):
 
     def oneinitiative(self,response):
         title = Selector(response).xpath('//p[@class="titulo_iniciativa"]/text()').extract()[0]
-        expt = re.search('\((.+?)\)', title).group(1)
+        expt = re.search('\(([0-9]{3}\/[0-9]{6})\)', title).group(1)
 
         #filter = Selector(response).xpath('//div[@class="ficha_iniciativa"]/p[@class="apartado_iniciativa"]/text()')
 
@@ -183,10 +184,30 @@ class StackSpider(Spider):
         item = response.meta['item']
         listurls = response.meta['urls']
         isfirst = response.meta['isfirst']
-        urls = response.meta['next']
+
         itemserie = response.meta['serie']
 
         pages = Selector(response).xpath('//p/a/@name').extract()
+
+        #si tiene paginador lo descartamos
+        descarte = Selector(response).xpath('//p[@class="texto_completo"]')
+
+        if descarte:
+            if listurls:
+                first_url = self.geturl(listurls[0])
+                onlyserie = self.getserie(listurls[0])
+
+                number = self.getnumber(first_url)
+                self.delfirstelement(listurls)
+                yield scrapy.Request(self.createUrl(response.url,first_url),callback=self.recursiveletters,
+                                 dont_filter = False,  meta={'pag': number, 'item':item,'urls':listurls,
+                                                             'isfirst':isfirst ,'serie':onlyserie})
+            else:
+                yield item
+
+
+
+
 
 
         try:
@@ -242,7 +263,7 @@ class StackSpider(Spider):
         # si encuentras
 
         """
-        if isfirst:
+        if isfirst and not descarte:
             if haspage:
                 if not listurls:
                     if itemserie=="A":
@@ -251,7 +272,6 @@ class StackSpider(Spider):
                         item["B"].append(self.searchpages(response, number,item["ref"]))
                     elif itemserie=="D":
                         item["D"].append(self.searchpages(response, number,item["ref"]))
-                    pdb.set_trace()
 
                     yield item
 
@@ -273,10 +293,9 @@ class StackSpider(Spider):
 
                     yield scrapy.Request(self.createUrl(response.url,first_url), callback=self.recursiveletters, dont_filter=False,
                                              meta={'pag': number, 'item': item, 'urls': listurls, 'isfirst': False,
-                                                   'next': False, 'serie':onlyserie})
+                                                    'serie':onlyserie})
             #no tiene pagina
             else:
-                pdb.set_trace()
                 if not listurls:
 
                     if itemserie=="A":
@@ -286,7 +305,6 @@ class StackSpider(Spider):
                     elif itemserie=="D":
                         item["D"].append(self.searchpages(response, number,item["ref"]))
 
-                    pdb.set_trace()
                     yield item
                 else:
                     if itemserie=="A":
@@ -303,7 +321,7 @@ class StackSpider(Spider):
 
                     yield scrapy.Request(self.createUrl(response.url,first_url), callback=self.recursiveletters, dont_filter=False,
                                              meta={'pag': number, 'item': item, 'urls': listurls, 'isfirst': "a",
-                                                   'next': False, 'serie':onlyserie})
+                                                    'serie':onlyserie})
 
 
 
@@ -312,7 +330,7 @@ class StackSpider(Spider):
 
                     #este es el que devuelve el objeto, cuando no quedan urls
                     # Este es el esencial
-        elif not listurls and not isfirst:
+        elif not listurls and not isfirst and not descarte:
                 if haspage:
                     if itemserie=="A":
                         item["A"].append(self.searchpages(response, number,item["ref"]))
@@ -325,7 +343,7 @@ class StackSpider(Spider):
                     yield item
 
 
-        else:
+        elif not descarte:
             if itemserie=="A":
                 item["A"].append(self.searchpages(response, number,item["ref"]))
             elif itemserie=="B":
@@ -338,10 +356,9 @@ class StackSpider(Spider):
 
             number = self.getnumber(first_url)
             self.delfirstelement(listurls)
-            pdb.set_trace()
             yield scrapy.Request(self.createUrl(response.url,first_url),callback=self.recursiveletters,
                                  dont_filter = False,  meta={'pag': number, 'item':item,'urls':listurls,
-                                                             'isfirst':False , 'next':False,'serie':onlyserie})
+                                                             'isfirst':False ,'serie':onlyserie})
 
 
 
@@ -367,30 +384,38 @@ class StackSpider(Spider):
 
 
 
-    def extracttext(self,response,number,expt):
+    def extracttext(self,response,number,ref):
         textfragment = self.fragmenttxt(response,number)
+        res = ""
 
-        return textfragment
-        """
-            #Es el texto entero y no hay que fragmentar
-            if not re.search(expt,textfragment):
-                return textfragment
 
-            diffexpt=len(re.findall('[0-9]{3}\/[0-9]{6}',textfragment))
-            numexpt=len(re.findall(expt,textfragment))
+        #Es el texto entero y no hay que fragmentar
+        if not re.search(ref,textfragment):
+            return textfragment
 
-            if diffexpt== numexpt:
-                return textfragment
-            else:
+        diffexpt=len(re.findall('[0-9]{3}\/[0-9]{6}',textfragment))
+        numexpt=len(re.findall(ref,textfragment))
+        if diffexpt== numexpt:
+            self.extractbyref(textfragment,ref)
+            return textfragment
+        else:
                 #aqui se fragmenta
-                pdb.set_trace()
-                pass
+            pdb.set_trace()
+            pass
 
 
             #re.search('[0-9]{3}\/[0-9]{6}',textfragment)
 
 
-            """
+    def extractbyref(self,text,ref):
+        splittext = text.split("<br><br>")
+        control = False
+
+        for line in splittext:
+            pass
+
+        pdb.set_trace()
+
 
 
 
@@ -431,14 +456,13 @@ class StackSpider(Spider):
                 result.append(i)
 
 
-
-        return self.removeHTMLtags(self.concatlist(result))
+        return self.concatlist(result)
 
     #http://www.congreso.es/portal/page/portal/Congreso/Congreso/Iniciativas?_piref73_2148295_73_1335437_1335437.next_page=/wc/servidorCGI&CMD=VERLST&BASE=iwi6&FMT=INITXLTS.fmt&DOCS=1-50&DOCORDER=FIFO&OPDEF=Y&QUERY=%28I%29.ACIN1.
 
 
     def concatlist(self, list):
-        return ' '.join( elem for elem in list)
+        return '<br><br>'.join( elem for elem in list)
 
     def dellastelement(self,list):
 
