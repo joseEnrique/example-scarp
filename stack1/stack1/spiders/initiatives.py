@@ -19,6 +19,7 @@ class InitiativeItem(Item):
     A = Field()
     B = Field()
     D = Field()
+    C = Field()
 
 
 
@@ -34,6 +35,9 @@ class StackSpider(Spider):
 
 
     def parse(self, response):
+        yield scrapy.Request("http://www.congreso.es/portal/page/portal/Congreso/Congreso/Iniciativas/Indice%20de%20Iniciativas?_piref73_1335503_73_1335500_1335500.next_page=/wc/servidorCGI&CMD=VERLST&BASE=IW10&PIECE=IWC0&FMT=INITXD1S.fmt&FORM1=INITXLUS.fmt&DOCS=3-3&QUERY=%28I%29.ACIN1.+%26+%28201%29.SINI.",callback=self.oneinitiative)
+
+
         list_types = Selector(response).xpath('//div[@class="listado_1"]//ul/li/a/@href')
         for types in list_types:
             href=  types.extract()
@@ -65,7 +69,6 @@ class StackSpider(Spider):
         #yield scrapy.Request("http://www.congreso.es/portal/page/portal/Congreso/Congreso/Iniciativas/Indice%20de%20Iniciativas?_piref73_1335503_73_1335500_1335500.next_page=/wc/servidorCGI&CMD=VERLST&BASE=IW11&PIECE=IWA1&FMT=INITXD1S.fmt&FORM1=INITXLUS.fmt&DOCS=1-1&QUERY=%28I%29.ACIN1.+%26+%28080%29.SINI.",callback=self.oneinitiative)
 
         #ESTE DABA RUIDO
-        yield scrapy.Request("http://www.congreso.es/portal/page/portal/Congreso/Congreso/Iniciativas?_piref73_2148295_73_1335437_1335437.next_page=/wc/servidorCGI&CMD=VERLST&BASE=IW11&PIECE=IWA1&FMT=INITXD1S.fmt&FORM1=INITXLUS.fmt&DOCS=1-1&QUERY=%28I%29.ACIN1.+%26+%28132%29.SINI.",callback=self.oneinitiative)
         #yield scrapy.Request("http://www.congreso.es/portal/page/portal/Congreso/Congreso/Iniciativas/Indice%20de%20Iniciativas?_piref73_1335503_73_1335500_1335500.next_page=/wc/servidorCGI&CMD=VERLST&BASE=IW11&PIECE=IWC1&FMT=INITXD1S.fmt&FORM1=INITXLUS.fmt&DOCS=25-25&QUERY=%28I%29.ACIN1.+%26+%28212%29.SINI.",callback=self.oneinitiative)
 
 
@@ -91,20 +94,35 @@ class StackSpider(Spider):
          and text()="Boletines:" ]/following-sibling::\
         p[@class="apartado_iniciativa"][1]/preceding-sibling::p[preceding-sibling::p[. = "Boletines:"]]')
 
-
         #si estan los ultimos
         bol1= Selector(response).xpath('//div[@class="ficha_iniciativa"]/p[@class="apartado_iniciativa"\
             and text()="Boletines:" ]/following-sibling::\
            p[@class="texto"]')
 
+
+        ds = Selector(response).xpath('//div[@class="ficha_iniciativa"]/p[@class="apartado_iniciativa"\
+         and text()="Diarios de Sesiones:" ]/following-sibling::\
+        p[@class="apartado_iniciativa"][1]/preceding-sibling::p[preceding-sibling::p[. = "Diarios de Sesiones:"]]')
+
+
+        ds1 = Selector(response).xpath('//div[@class="ficha_iniciativa"]/p[@class="apartado_iniciativa"\
+            and text()="Diarios de Sesiones:" ]/following-sibling::\
+           p[@class="texto"]')
+
+
         #switch para saber si esta el ultimo o no
+        boletines = None
+        diarios = None
+
         if bol:
             boletines = bol
         elif not bol:
             boletines = bol1
-        else:
-            boletines = False
 
+        if ds:
+            diarios = ds
+        elif not ds:
+            diarios = ds1
 
 
         listautors=[]
@@ -125,32 +143,52 @@ class StackSpider(Spider):
         item["A"]=[]
         item["B"]=[]
         item["D"]=[]
+        item["C"]=[]
 
         #un boletin  es una lista con tipo y url
-        if boletines:
-
-
+        if boletines or diarios:
             listurls=[]
+            if boletines:
 
-            for boletin in boletines:
-                text=boletin.xpath("text()").extract()
-                try:
+                for boletin in boletines:
+                    text=boletin.xpath("text()").extract()
+                    try:
 
-                    serie= re.search('m. (.+?)-', text[0]).group(1)
+                        serie= re.search('m. (.+?)-', text[0]).group(1)
+                        haswordcongress = re.search('Congreso', text[0])
 
-                except:
-                    serie = False
-                url = boletin.xpath("a/@href").extract()
+                    except:
+                        serie = False
+                        haswordcongress = False
+                    url = boletin.xpath("a/@href").extract()
 
-                if serie :
-                    listserie =[]
-                    listserie.append(serie)
-                    listserie.append(url[0])
-                    listurls.append(listserie)
+                    if serie and haswordcongress :
+                        listserie =[]
+                        listserie.append(serie)
+                        listserie.append(url[0])
+                        listurls.append(listserie)
 
 
-            #se quita duplicadas
-            #listurls= list(set(listurls))
+
+                #se quita duplicadas
+                #listurls= list(set(listurls))
+            if diarios:
+
+
+
+                for diario in diarios:
+                    text=diario.xpath("text()").extract()
+
+                    url = diario.xpath("a/@href").extract()
+
+                    if  re.search('Congreso', text[0]) :
+                        listDS =[]
+                        listDS.append("DS")
+                        listDS.append(url[0])
+                        listurls.append(listDS)
+
+
+
 
 
             first_url = self.geturl(listurls[0])
@@ -158,6 +196,8 @@ class StackSpider(Spider):
 
             number = self.getnumber(first_url)
             self.delfirstelement(listurls)
+
+
             yield scrapy.Request(self.createUrl(response.url,first_url),callback=self.recursiveletters, dont_filter = False,
                                  meta={'pag': number, 'item':item,'urls':listurls, 'isfirst': True, 'next':False,
                                        'serie': onlyserie })
@@ -196,7 +236,6 @@ class StackSpider(Spider):
 
 
 
-
         try:
             firstopage = re.search('gina(.+?)\)', pages[0]).group(1)
         except:
@@ -210,46 +249,6 @@ class StackSpider(Spider):
             haspage = True
 
 
-
-        """
-
-        if not haspage and int(number)!= int(firstopage)-1 and pages:
-            #solo hasta siguiente
-            urlstopass = Selector(response).xpath('//p[@class="texto_completo"]/a[not(text()="Siguiente\n    >>")]/@href').extract()
-            urlstopass = list(set(urlstopass))
-
-            next_url = False
-            if urlstopass and not urls:
-
-                urls = [i for i in urlstopass[0:len(urlstopass)]]
-                url = urls[0]
-                next_url = urlparse.urljoin(response.url, url)
-                self.delfirstelement(urls)
-            elif urls:
-                url = urls[0]
-                next_url = urlparse.urljoin(response.url, url)
-                self.delfirstelement(urls)
-
-            else:
-                #No lo encuentra porque esta mal organizado
-                pdb.set_trace()
-                err = "Errror  "+number + " URL: "+response.url
-
-                item["publications"].append(err)
-
-                yield item
-
-            if next_url:
-                if isfirst:
-                    yield scrapy.Request(next_url,callback=self.recursiveletters, dont_filter = False,  meta={'pag': number, 'item':item,'urls':listurls, 'isfirst':True,'next':urls })
-                else:
-                    yield scrapy.Request(next_url,callback=self.recursiveletters, dont_filter = False,  meta={'pag': number, 'item':item,'urls':listurls, 'isfirst':False, 'next':urls })
-
-
-        else:
-        # si encuentras
-
-        """
 
         if descarte:
             if listurls:
@@ -273,6 +272,8 @@ class StackSpider(Spider):
                         item["B"].append(self.searchpages(response, number,item["ref"]))
                     elif itemserie=="D":
                         item["D"].append(self.searchpages(response, number,item["ref"]))
+                    elif itemserie=="C":
+                        item["C"].append(self.searchpages(response, number,item["ref"]))
 
                     yield item
 
@@ -285,6 +286,8 @@ class StackSpider(Spider):
                         item["B"].append(self.searchpages(response, number,item["ref"]))
                     elif itemserie=="D":
                         item["D"].append(self.searchpages(response, number,item["ref"]))
+                    elif itemserie=="C":
+                        item["C"].append(self.searchpages(response, number,item["ref"]))
                     first_url = self.geturl(listurls[0])
                     onlyserie = self.getserie(listurls[0])
 
@@ -305,7 +308,8 @@ class StackSpider(Spider):
                         item["B"].append(self.searchpages(response, number,item["ref"]))
                     elif itemserie=="D":
                         item["D"].append(self.searchpages(response, number,item["ref"]))
-
+                    elif itemserie=="C":
+                        item["C"].append(self.searchpages(response, number,item["ref"]))
                     yield item
                 else:
                     if itemserie=="A":
@@ -314,6 +318,8 @@ class StackSpider(Spider):
                         item["B"].append(self.searchpages(response, number,item["ref"]))
                     elif itemserie=="D":
                         item["D"].append(self.searchpages(response, number,item["ref"]))
+                    elif itemserie=="C":
+                        item["C"].append(self.searchpages(response, number,item["ref"]))
                     first_url = self.geturl(listurls[0])
                     onlyserie = self.getserie(listurls[0])
 
@@ -339,6 +345,8 @@ class StackSpider(Spider):
                         item["B"].append(self.searchpages(response, number,item["ref"]))
                     elif itemserie=="D":
                         item["D"].append(self.searchpages(response, number,item["ref"]))
+                    elif itemserie=="C":
+                        item["C"].append(self.searchpages(response, number,item["ref"]))
                     yield item
                 else:
                     yield item
@@ -351,6 +359,8 @@ class StackSpider(Spider):
                 item["B"].append(self.searchpages(response, number,item["ref"]))
             elif itemserie=="D":
                 item["D"].append(self.searchpages(response, number,item["ref"]))
+            elif itemserie=="C":
+                item["C"].append(self.searchpages(response, number,item["ref"]))
 
             first_url = self.geturl(listurls[0])
             onlyserie = self.getserie(listurls[0])
