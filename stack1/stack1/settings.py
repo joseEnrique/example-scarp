@@ -10,10 +10,10 @@
 #     http://scrapy.readthedocs.org/en/latest/topics/spider-middleware.html
 
 BOT_NAME = 'stack1'
-
+DEPTH_LIMIT = 100
 SPIDER_MODULES = ['stack1.spiders']
 NEWSPIDER_MODULE = 'stack1.spiders'
-ITEM_PIPELINES = {'stack1.pipelines.MongoDBPipeline':300}
+ITEM_PIPELINES = {'stack1.pipelines.MongoDBPipeline':400}
 
 MONGODB_SERVER = '192.168.3.34'
 MONGODB_PORT = 27017
