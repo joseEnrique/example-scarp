@@ -8,7 +8,6 @@ import pdb
 from scrapy.contrib.linkextractors import LinkExtractor
 
 from scrapy.item import Item, Field
-from scrapy.spiders import Rule
 
 
 class InitiativeItem(Item):
@@ -21,6 +20,8 @@ class InitiativeItem(Item):
     D = Field()
     C = Field()
     DS = Field()
+    tramitacion = Field()
+    restramitacion = Field()
 
 
 
@@ -37,7 +38,7 @@ class StackSpider(Spider):
 
     def parse(self, response):
         zsas = ""
-        zsas = "http://www.congreso.es/portal/page/portal/Congreso/Congreso/Iniciativas/Indice%20de%20Iniciativas?_piref73_1335503_73_1335500_1335500.next_page=/wc/servidorCGI&CMD=VERLST&BASE=IWI8&PIECE=IWI8&FMT=INITXD1S.fmt&FORM1=INITXLUS.fmt&DOCS=1-1&QUERY=%28I%29.ACIN1.+%26+%28152%29.SINI."
+        zsas = "http://www.congreso.es/portal/page/portal/Congreso/Congreso/Iniciativas?_piref73_2148295_73_1335437_1335437.next_page=/wc/servidorCGI&CMD=VERLST&BASE=IWI9&PIECE=IWI9&FMT=INITXD1S.fmt&FORM1=INITXLUS.fmt&DOCS=7-7&QUERY=%28I%29.ACIN1.+%26+%28121%29.SINI."
         yield scrapy.Request(zsas,callback=self.oneinitiative)
 
 
@@ -88,9 +89,8 @@ class StackSpider(Spider):
         #filter = Selector(response).xpath('//div[@class="ficha_iniciativa"]/p[@class="apartado_iniciativa"]/text()')
 
         autors = Selector(response).xpath('//div[@class="ficha_iniciativa"]/p[@class="apartado_iniciativa"\
-         and text()="Autor:\n" ]/following-sibling::\
-        p[@class="apartado_iniciativa"][1]/preceding-sibling::p[preceding-sibling::p[. = "Autor:\n"]]')
-
+         and contains(.,"Autor:") ]/following-sibling::\
+        p[@class="apartado_iniciativa"][1]/preceding-sibling::p[preceding-sibling::p[contains(.,"Autor:")]]')
 
         ##DEPENDE DE DONDE ESTEN SITUADOS LOS BOLETINES
         #si no estan los ultimos
@@ -114,9 +114,40 @@ class StackSpider(Spider):
            p[@class="texto"]')
 
 
+        # para las tramitaciones
+        tn = Selector(response).xpath('//div[@class="ficha_iniciativa"]/p[@class="apartado_iniciativa"\
+         and contains(.,"seguida por la iniciativa:") ]/following-sibling::\
+        p[@class="apartado_iniciativa"][1]/preceding-sibling::p[preceding-sibling::p[contains(.,"seguida por la iniciativa:")]]')
+
+        tn1 = Selector(response).xpath('//div[@class="ficha_iniciativa"]/p[@class="apartado_iniciativa"\
+            and contains(.,"seguida por la iniciativa:") ]/following-sibling::\
+           p[@class="texto"]')
+
+                # para resultado de las  tramitaciones
+        restr = Selector(response).xpath('//div[@class="ficha_iniciativa"]/p[@class="apartado_iniciativa"\
+         and contains(.,"Resultado de la tramitac") ]/following-sibling::\
+        p[@class="apartado_iniciativa"][1]/preceding-sibling::p[preceding-sibling::p[contains(.,"Resultado de la tramitac")]]')
+
+        restr1 = Selector(response).xpath('//div[@class="ficha_iniciativa"]/p[@class="apartado_iniciativa"\
+            and contains(.,"Resultado de la tramitac") ]/following-sibling::\
+           p[@class="texto"]')
+        #para ponentes por si los hubiera
+
+        pon = Selector(response).xpath('//div[@class="ficha_iniciativa"]/p[@class="apartado_iniciativa"\
+         and contains(.,"Ponentes:") ]/following-sibling::\
+        p[@class="apartado_iniciativa"][1]/preceding-sibling::p[preceding-sibling::p[contains(.,"Ponentes:")]]')
+
+        pon1 = Selector(response).xpath('//div[@class="ficha_iniciativa"]/p[@class="apartado_iniciativa"\
+            and contains(.,"Ponentes:") ]/following-sibling::\
+           p[@class="texto"]')
+
+
         #switch para saber si esta el ultimo o no
         boletines = None
         diarios = None
+        tramitacion = None
+        restramitacion= None
+        ponentes = None
 
         if bol:
             boletines = bol
@@ -128,15 +159,53 @@ class StackSpider(Spider):
         elif not ds:
             diarios = ds1
 
+        if tn:
+            tramitacion = tn
+        elif not tn:
+            tramitacion = tn1
+
+        if restr:
+            restramitacion = restr
+        elif not restr:
+            restramitacion = restr1
+
+        if pon:
+            ponentes = pon
+        elif not pon:
+            ponentes = pon1
+
+    #######
+
+
+
+
 
         listautors=[]
 
 
-        for autor in autors:
+
+        for autor in (autors):
             add = autor.xpath("a/b/text()").extract()
             if not add:
-                add = autor.xpath("./text()").extract()
+                add = autor.xpath("./text()").extract()[0]
+            else:
+                add= add[0]
             listautors.append(add)
+
+        if ponentes:
+            for ponente in ponentes:
+                add = ponente.xpath("a/b/text()").extract()
+                if not add:
+                    try:
+                        add = ponente.xpath("./text()").extract()[0]
+                        listautors.append(add)
+                    except:
+                        pass
+                else:
+                    if add:
+                        add= add[0]
+                        listautors.append(add)
+
 
         item = InitiativeItem()
 
@@ -149,6 +218,14 @@ class StackSpider(Spider):
         item["D"]=[]
         item["C"]=[]
         item["DS"]=[]
+        if  tramitacion:
+            #cogemos la ultima tramitacion
+            tr = tramitacion.extract()[0].strip().split('<br>')[-1]
+            item["tramitacion"]=tr
+        if  restramitacion:
+            #cogemos el ultimo resultado de la tramitacion
+            rtr = restramitacion.extract()[0].strip().split('<br>')[-1]
+            item["restramitacion"]=rtr
 
         #un boletin  es una lista con tipo y url
         if boletines or diarios:
@@ -439,7 +516,7 @@ class StackSpider(Spider):
         numexpt=re.findall(ref,textfragment)
 
         texto = self.extractbyref(textfragment,ref,number)
-        pages = Selector(response).xpath('//p/a/@name').extract()
+        pages = Selector(response).xpath('//a/@name').extract()
         numbers = []
             #bbusca mas texto
         for page in pages:
