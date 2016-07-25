@@ -1,10 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
   <component name="ChangeListManager">
-    <list default="true" id="96dae07f-2292-477a-81a5-423fc7247189" name="Default" comment="">
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/stack1/stack1/items.py" afterPath="$PROJECT_DIR$/stack1/stack1/items.py" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/stack1/stack1/spiders/initiatives.py" afterPath="$PROJECT_DIR$/stack1/stack1/spiders/initiatives.py" />
-    </list>
+    <list default="true" id="96dae07f-2292-477a-81a5-423fc7247189" name="Default" comment="" />
     <ignored path="example-scrap.iws" />
     <ignored path=".idea/workspace.xml" />
     <option name="EXCLUDED_CONVERTED_TO_IGNORED" value="true" />
@@ -24,10 +21,10 @@
   </component>
   <component name="FileEditorManager">
     <leaf SIDE_TABS_SIZE_LIMIT_KEY="300">
-      <file leaf-file-name="initiatives.py" pinned="false" current-in-tab="true">
+      <file leaf-file-name="initiatives.py" pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/stack1/stack1/spiders/initiatives.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state vertical-scroll-proportion="0.89586526">
+            <state vertical-scroll-proportion="0.0">
               <caret line="39" column="59" selection-start-line="39" selection-start-column="59" selection-end-line="39" selection-end-column="59" />
               <folding>
                 <element signature="e#24#33#0" expanded="true" />
@@ -36,11 +33,11 @@
           </provider>
         </entry>
       </file>
-      <file leaf-file-name="items.py" pinned="false" current-in-tab="false">
+      <file leaf-file-name="items.py" pinned="false" current-in-tab="true">
         <entry file="file://$PROJECT_DIR$/stack1/stack1/items.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state vertical-scroll-proportion="0.0">
-              <caret line="22" column="0" selection-start-line="22" selection-start-column="0" selection-end-line="22" selection-end-column="0" />
+            <state vertical-scroll-proportion="0.32159266">
+              <caret line="14" column="15" selection-start-line="14" selection-start-column="15" selection-end-line="14" selection-end-column="15" />
               <folding />
             </state>
           </provider>
@@ -820,21 +817,21 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/stack1/stack1/items.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state vertical-scroll-proportion="0.0">
-          <caret line="22" column="0" selection-start-line="22" selection-start-column="0" selection-end-line="22" selection-end-column="0" />
-          <folding />
-        </state>
-      </provider>
-    </entry>
     <entry file="file://$PROJECT_DIR$/stack1/stack1/spiders/initiatives.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state vertical-scroll-proportion="0.89586526">
+        <state vertical-scroll-proportion="0.0">
           <caret line="39" column="59" selection-start-line="39" selection-start-column="59" selection-end-line="39" selection-end-column="59" />
           <folding>
             <element signature="e#24#33#0" expanded="true" />
           </folding>
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/stack1/stack1/items.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state vertical-scroll-proportion="0.32159266">
+          <caret line="14" column="15" selection-start-line="14" selection-start-column="15" selection-end-line="14" selection-end-column="15" />
+          <folding />
         </state>
       </provider>
     </entry>
