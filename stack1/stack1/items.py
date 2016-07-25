@@ -8,20 +8,15 @@ from scrapy.item import Item, Field
 
 
 class InitiativeItem(Item):
+    ref = Field()
     title = Field()
-    url = Field()
     autor = Field()
-
-
-
-class MemberItem(Item):
-    name = Field()
-    second_name = Field()
-    avatar = Field()
-    group = Field()
-    email = Field()
-    web = Field()
-    twitter= Field()
-    division= Field()
-    inscription_date = Field()
-    termination_date = Field()
+    url = Field()
+    A = Field()
+    B = Field()
+    D = Field()
+    C = Field()
+    DS = Field()
+    type = Field()
+    tramitacion = Field()
+    restramitacion = Field()

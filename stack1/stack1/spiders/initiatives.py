@@ -9,21 +9,9 @@ from scrapy.contrib.linkextractors import LinkExtractor
 
 from scrapy.item import Item, Field
 
+from stack1.term import Terms
 
-class InitiativeItem(Item):
-    ref = Field()
-    title = Field()
-    autor = Field()
-    url = Field()
-    A = Field()
-    B = Field()
-    D = Field()
-    C = Field()
-    DS = Field()
-    tramitacion = Field()
-    restramitacion = Field()
-
-
+from stack1.items import InitiativeItem
 
 
 class StackSpider(Spider):
@@ -35,18 +23,22 @@ class StackSpider(Spider):
         "http://www.congreso.es/portal/page/portal/Congreso/Congreso/Iniciativas/Indice%20de%20Iniciativas",
     ]
 
+    def start_requests(self):
+        return [scrapy.FormRequest("http://www.congreso.es/portal/page/portal/Congreso/Congreso/Iniciativas/Indice%20de%20Iniciativas?_piref73_1335505_73_1335500_1335500.next_page=/wc/cambioLegislatura", formdata = {'idLegislatura':'10'} , callback = self.parse)]
+
+
 
     def parse(self, response):
-        zsas = ""
-        zsas = "http://www.congreso.es/portal/page/portal/Congreso/Congreso/Iniciativas?_piref73_2148295_73_1335437_1335437.next_page=/wc/servidorCGI&CMD=VERLST&BASE=IWI9&PIECE=IWI9&FMT=INITXD1S.fmt&FORM1=INITXLUS.fmt&DOCS=7-7&QUERY=%28I%29.ACIN1.+%26+%28121%29.SINI."
-        yield scrapy.Request(zsas,callback=self.oneinitiative)
 
 
-        list_types = Selector(response).xpath('//div[@class="listado_1"]//ul/li/a/@href')
+        list_types = Selector(response).xpath('//div[@class="listado_1"]//ul/li/a')
         for types in list_types:
-            href=  types.extract()
-            initiative_url = urlparse.urljoin(response.url, href)
-            yield scrapy.Request(initiative_url,callback=self.initiatives)
+            href=  types.xpath("./@href").extract()
+            text = types.xpath("./text()").extract()
+            if Terms.filterBytype(text[0]):
+                type = Terms.getType(text[0])
+                initiative_url = self.createUrl(response.url,href[0])
+                yield scrapy.Request(initiative_url,callback=self.initiatives, meta={'type': type})
 
 
 
@@ -55,6 +47,8 @@ class StackSpider(Spider):
 
 
     def initiatives(self, response):
+
+        type = response.meta['type']
 
         first_url = Selector(response).xpath('//div[@class="resultados_encontrados"]/p/a/@href').extract()[0]
 
@@ -75,14 +69,15 @@ class StackSpider(Spider):
         #ESTE DABA RUIDO
         #yield scrapy.Request("http://www.congreso.es/portal/page/portal/Congreso/Congreso/Iniciativas/Indice%20de%20Iniciativas?_piref73_1335503_73_1335500_1335500.next_page=/wc/servidorCGI&CMD=VERLST&BASE=IW11&PIECE=IWC1&FMT=INITXD1S.fmt&FORM1=INITXLUS.fmt&DOCS=25-25&QUERY=%28I%29.ACIN1.+%26+%28212%29.SINI.",callback=self.oneinitiative)
 
-
-        #for i in range(1,int(num_inis[0])+1):
-        #    new_url = split[0]+"&DOCS="+str(i)+"-"+str(i)+split[2]
-        #    initiative_url = urlparse.urljoin(response.url, new_url)
-        #    yield scrapy.Request(initiative_url,callback=self.oneinitiative)
+        for i in range(1,int(num_inis[0])+1):
+            new_url = split[0]+"&DOCS="+str(i)+"-"+str(i)+split[2]
+            initiative_url = self.createUrl(response.url,new_url)
+            yield scrapy.Request(initiative_url,callback=self.oneinitiative, meta = {'type':type})
 
     def oneinitiative(self,response):
 
+
+        type = response.meta['type']
         title = Selector(response).xpath('//p[@class="titulo_iniciativa"]/text()').extract()[0]
         expt = re.search('\(([0-9]{3}\/[0-9]{6})\)', title).group(1)
 
@@ -213,6 +208,7 @@ class StackSpider(Spider):
         item['title'] = title
         item['url'] = response.url
         item['autor'] = listautors
+        item['type'] = type
         item["A"]=[]
         item["B"]=[]
         item["D"]=[]
@@ -246,38 +242,42 @@ class StackSpider(Spider):
 
                     if serie and haswordcongress :
                         listserie =[]
-                        listserie.append(serie)
-                        listserie.append(url[0])
-                        listurls.append(listserie)
+                        if Terms.isTextvalid(type,serie):
+                            listserie.append(serie)
+                            listserie.append(url[0])
+                            listurls.append(listserie)
 
 
 
                 #se quita duplicadas
                 #listurls= list(set(listurls))
             if diarios:
+                if "DS" in Terms.getTypetext(type):
 
 
 
-                for diario in diarios:
-                    text=diario.xpath("text()").extract()
+                    for diario in diarios:
+                        text=diario.xpath("text()").extract()
 
-                    url = diario.xpath("a/@href").extract()
+                        url = diario.xpath("a/@href").extract()
 
-                    if  re.search('Congreso', text[0]) :
-                        listDS =[]
-                        listDS.append("DS")
-                        listDS.append(url[0])
-                        listurls.append(listDS)
-
-
+                        if  re.search('Congreso', text[0]) :
+                            listDS =[]
+                            listDS.append("DS")
+                            listDS.append(url[0])
+                            listurls.append(listDS)
 
 
+
+            pdb.set_trace()
             if listurls:
                 first_url = self.geturl(listurls[0])
                 onlyserie = self.getserie(listurls[0])
 
                 number = self.getnumber(first_url)
                 self.delfirstelement(listurls)
+
+
 
 
                 yield scrapy.Request(self.createUrl(response.url,first_url),callback=self.recursiveletters, dont_filter = True,
